@@ -28,13 +28,15 @@ struct ParameterString(String);
 
 impl RemoteConfigBuilder {
     pub async fn start_flow() -> std::result::Result<(String, Parameter), &'static str> {
-        let result = Self::request_name()
+        Self::request_name()
             .await
             .request_value_type()
             .await
             .request_default_value()
-            .await;
-        result.inner
+            .await
+            .request_description()
+            .await
+            .inner
             .map(|parts| parts.parameter())
             .map_err(|error| error.message)
     }
@@ -53,34 +55,45 @@ impl RemoteConfigBuilder {
     }
 
     async fn request_value_type(self) -> Self {
-        let inner = match self.inner {
-            Ok(mut parts) => {
-                let message = "Enter value type. It can be one of the following: \
-                 Boolean [b], \
-                 Number [n], \
-                 JSON [j], \
-                 String [s]: ";
-
-                Self::request_user_input(message)
-                    .await
-                    .map(move |value_type| {
-                        parts.value_type = value_type;
-                        parts
-                    })
-            }
-            Err(error) => Err(error)
-        };
-        Self { inner }
+        let message = "Enter value type. It can be one of the following: \
+            Boolean [b], \
+            Number [n], \
+            JSON [j], \
+            String [s]: ";
+        self.and_then(message, |mut parts, value_type| {
+            parts.value_type = value_type;
+            Ok(parts)
+        }).await
     }
 
     async fn request_default_value(self) -> Self {
+        self.and_then(&"Enter default value:", |mut parts, value: ParameterString| {
+            parts.set_default_value(value.0).map_err(Error::new)
+        }).await
+    }
+
+    async fn request_description(self) -> Self {
+        self.and_then(&"Enter description (Optional):", |mut parts, value: ParameterString| {
+            let description = value.0;
+            parts.description = if description.is_empty() {
+                None
+            } else {
+                Some(description)
+            };
+            Ok(parts)
+        }).await
+    }
+
+    async fn and_then<F, P>(
+        self,
+        request_msg: &'static str,
+        parts_modifier: F
+    ) -> Self where F: FnOnce(Parts, P) -> Result<Parts>, P: TryFrom<String, Error=Error> {
         let inner = match self.inner {
-            Ok(mut parts) => {
-                Self::request_user_input::<ParameterString>(&"Enter default value:")
-                    .await
-                    .and_then(move |value_type| {
-                        parts.set_default_value(value_type.0).map_err(Error::new)
-                    })
+            Ok(parts) => {
+                Self::request_user_input::<P>(request_msg).await.and_then(move |value| {
+                    parts_modifier(parts, value)
+                })
             }
             Err(error) => Err(error)
         };
@@ -128,7 +141,7 @@ impl Parts {
     }
 
     fn set_default_value(mut self, value: String) -> std::result::Result<Self, &'static str> {
-        match &self.value_type {
+        let mut parts = match &self.value_type {
             ParameterValueType::Boolean => value.parse::<bool>().map(move|_| self).map_err(|_| "Value must boolean"),
             ParameterValueType::Number => {
                 if value.chars().into_iter().all(|char| char.is_numeric()) {
@@ -144,7 +157,9 @@ impl Parts {
                     .map(move|_| self)
             }
             ParameterValueType::Unspecified => panic!("Unsupported value type")
-        }
+        }?;
+        parts.default_value = ParameterValue::Value(value);
+        Ok(parts)
     }
 
     fn parameter(self) -> (String, Parameter) {

@@ -4,13 +4,13 @@ use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct RemoteConfig {
-    conditions: Vec<Condition>,
-    parameters: HashMap<String, Parameter>,
+    pub conditions: Vec<Condition>,
+    pub parameters: HashMap<String, Parameter>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Condition {
+pub struct Condition {
     name: String,
     expression: String,
     tag_color: TagColor,
@@ -66,24 +66,51 @@ pub enum ParameterValue {
 
 impl Display for Condition {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{\n  name: {},\n  expression: {},\n  tag_color: {:?}\n }}",
-            self.name, self.expression, self.tag_color
-        )
+        let entries = [
+            ("name", Debug::fmt(&self.name, f)?),
+            ("expression", Display::fmt(&self.expression, f)?),
+            ("tag_color", Debug::fmt(&self.tag_color, f)?)
+        ];
+        f.debug_map()
+            .entries(entries)
+            .finish()
+    }
+}
+
+impl Display for Parameter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "{{\n default_value: {:?},\n value_type: {:?},\n description: {:?}\n}}",
+                self.default_value,
+                self.value_type,
+                self.description
+            )
+        } else {
+            write!(
+                f,
+                "{{ default_value: {:?}, value_type: {:?}, description: {:?} }}",
+                self.default_value,
+                self.value_type,
+                self.description
+            )
+        }
     }
 }
 
 impl Display for ParameterValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
+        let mut map = f.debug_map();
+        let map = match self {
             ParameterValue::Value(value) => {
-                write!(f, "{{\n  value: {}\n}}", value)
+                map.entries([("value", value)])
             }
             ParameterValue::UseInAppDefault(use_default) => {
-                write!(f, "{{\n  useInAppDefault: {}\n}}", use_default)
+                map.entries([("useInAppDefault", use_default)])
             }
-        }
+        };
+        map.finish()
     }
 }
 

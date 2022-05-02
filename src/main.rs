@@ -1,11 +1,7 @@
-use colored::Colorize;
-use remote_config_modifier::remote_config_builder::RemoteConfigBuilder;
+use remote_config_modifier::add_parameter_flow::AddParameterFlow;
 
 #[tokio::main]
 async fn main() {
-    let parameter = RemoteConfigBuilder::start_flow().await;
-    match parameter {
-        Ok(parameter) => println!("parameter {:?}", parameter),
-        Err(message) => eprintln!("{}", format!("{}", message.red()))
-    }
+    let mut add_parameter_flow = AddParameterFlow::new();
+    add_parameter_flow.start_flow().await;
 }

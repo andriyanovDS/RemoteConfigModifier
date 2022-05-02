@@ -1,20 +1,14 @@
-use tokio::io::AsyncBufReadExt;
-use colored::Colorize;
 use serde_json::Value;
 use std::string::String;
+use colored::{Colorize, ColoredString};
+use crate::error::{Error, Result};
+use crate::io::{InputReader, InputString};
 use crate::remote_config::{Parameter, ParameterValue, ParameterValueType};
 
 #[derive(Debug)]
 pub struct RemoteConfigBuilder {
     inner: Result<Parts>,
 }
-
-#[derive(Debug)]
-pub struct Error {
-    pub message: &'static str,
-}
-
-type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 struct Parts {
@@ -24,10 +18,8 @@ struct Parts {
     value_type: ParameterValueType,
 }
 
-struct ParameterString(String);
-
 impl RemoteConfigBuilder {
-    pub async fn start_flow() -> std::result::Result<(String, Parameter), &'static str> {
+    pub async fn start_flow() -> std::result::Result<(String, Parameter), String> {
         Self::request_name()
             .await
             .request_value_type()
@@ -42,7 +34,7 @@ impl RemoteConfigBuilder {
     }
 
     async fn request_name() -> Self {
-        let result: Result<Parts> = Self::request_user_input::<ParameterString>(&"Enter parameter name:")
+        let result: Result<Parts> = InputReader::request_user_input::<InputString, ColoredString>(&"Enter parameter name:".green())
             .await
             .and_then(|name| {
                 Parts::validate_name(name.0).map_err(Error::new)
@@ -67,13 +59,13 @@ impl RemoteConfigBuilder {
     }
 
     async fn request_default_value(self) -> Self {
-        self.and_then(&"Enter default value:", |mut parts, value: ParameterString| {
+        self.and_then("Enter default value:", |parts, value: InputString| {
             parts.set_default_value(value.0).map_err(Error::new)
         }).await
     }
 
     async fn request_description(self) -> Self {
-        self.and_then(&"Enter description (Optional):", |mut parts, value: ParameterString| {
+        self.and_then("Enter description (Optional):", |mut parts, value: InputString| {
             let description = value.0;
             parts.description = if description.is_empty() {
                 None
@@ -91,7 +83,7 @@ impl RemoteConfigBuilder {
     ) -> Self where F: FnOnce(Parts, P) -> Result<Parts>, P: TryFrom<String, Error=Error> {
         let inner = match self.inner {
             Ok(parts) => {
-                Self::request_user_input::<P>(request_msg).await.and_then(move |value| {
+                InputReader::request_user_input::<P, ColoredString>(&request_msg.green()).await.and_then(move |value| {
                     parts_modifier(parts, value)
                 })
             }
@@ -100,18 +92,7 @@ impl RemoteConfigBuilder {
         Self { inner }
     }
 
-    async fn request_user_input<R>(request_msg: &'static str) -> Result<R> where R: TryFrom<String, Error=Error> {
-        println!("{}", format!("{}", request_msg.green()));
-        let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
-        let mut buffer = String::new();
-        reader.read_line(&mut buffer).await
-            .map_err(|_| Error::new("Failed to read input"))
-            .map(move |_| {
-                buffer.pop();
-                buffer
-            })
-            .and_then(R::try_from)
-    }
+
 }
 
 impl Parts {
@@ -128,9 +109,9 @@ impl Parts {
         if name.is_empty() {
             return Err("Name must contain at least one character");
         }
-        let mut characters = name.chars().into_iter();
+        let mut characters = name.chars();
         let first_char = characters.next().unwrap();
-        if first_char.is_ascii_alphabetic() == false && first_char != '_' {
+        if !first_char.is_ascii_alphabetic() && first_char != '_' {
             return Err("Parameter keys must start with an underscore or English letter character [A-Z, a-z]");
         }
         if characters.all(|char| char.is_ascii_alphanumeric() || char == '_') {
@@ -140,11 +121,11 @@ impl Parts {
         }
     }
 
-    fn set_default_value(mut self, value: String) -> std::result::Result<Self, &'static str> {
+    fn set_default_value(self, value: String) -> std::result::Result<Self, &'static str> {
         let mut parts = match &self.value_type {
             ParameterValueType::Boolean => value.parse::<bool>().map(move|_| self).map_err(|_| "Value must boolean"),
             ParameterValueType::Number => {
-                if value.chars().into_iter().all(|char| char.is_numeric()) {
+                if value.chars().all(|char| char.is_numeric()) {
                     Ok(self)
                 } else {
                     Err("Value must numeric")
@@ -173,16 +154,6 @@ impl Parts {
     }
 }
 
-impl TryFrom<String> for ParameterString {
-    type Error = Error;
-
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        String::try_from(value)
-            .map_err(|_| Error::new("Failed to parse input string"))
-            .map(|name| Self(name))
-    }
-}
-
 impl TryFrom<String> for ParameterValueType {
     type Error = Error;
 
@@ -202,11 +173,5 @@ impl TryFrom<String> for ParameterValue {
 
     fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
         Ok(Self::Value(value))
-    }
-}
-
-impl Error {
-    fn new(message: &'static str) -> Self {
-        Self { message }
     }
 }

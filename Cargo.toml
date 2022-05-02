@@ -1,0 +1,18 @@
+[package]
+name = "remote_config_modifier"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+color-eyre = "0.6.1"
+eyre = "0.6.8"
+hyper = { version = "0.14.18", features = ["full"] }
+hyper-rustls = "0.23.0"
+rustls = "0.20.4"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0.80"
+tokio = { version ="1.18.0", features = ["full"] }
+webbrowser = "0.7.1"
+yup-oauth2 = "6.6.0"

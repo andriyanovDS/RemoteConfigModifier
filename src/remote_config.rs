@@ -16,16 +16,6 @@ struct Condition {
     tag_color: TagColor,
 }
 
-impl Display for Condition {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{\n  name: {},\n  expression: {},\n  tag_color: {:?}\n }}",
-            self.name, self.expression, self.tag_color
-        )
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum TagColor {
@@ -46,19 +36,19 @@ enum TagColor {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Parameter {
+pub struct Parameter {
     #[serde(skip_serializing_if = "Option::is_none")]
-    default_value: Option<ParameterValue>,
+    pub default_value: Option<ParameterValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    conditional_values: Option<HashMap<String, ParameterValue>>,
+    pub conditional_values: Option<HashMap<String, ParameterValue>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    value_type: ParameterValueType,
+    pub description: Option<String>,
+    pub value_type: ParameterValueType,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
-enum ParameterValueType {
+pub enum ParameterValueType {
     #[serde(rename = "PARAMETER_VALUE_TYPE_UNSPECIFIED")]
     Unspecified,
     Boolean,
@@ -69,9 +59,19 @@ enum ParameterValueType {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
-enum ParameterValue {
+pub enum ParameterValue {
     Value(String),
     UseInAppDefault(bool),
+}
+
+impl Display for Condition {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{\n  name: {},\n  expression: {},\n  tag_color: {:?}\n }}",
+            self.name, self.expression, self.tag_color
+        )
+    }
 }
 
 impl Display for ParameterValue {

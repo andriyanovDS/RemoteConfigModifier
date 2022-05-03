@@ -1,14 +1,27 @@
 use tracing_subscriber::filter::{EnvFilter};
 use tracing_subscriber::fmt;
 use color_eyre::Report;
+use clap::Parser;
 use remote_config_modifier::add_parameter_flow::AddParameterFlow;
+use remote_config_modifier::{Args, Command};
 
 #[tokio::main]
 async fn main() -> Result<(), Report> {
     setup()?;
+    let cli = Args::parse();
 
-    let mut add_parameter_flow = AddParameterFlow::new();
-    add_parameter_flow.start_flow().await;
+    match &cli.command {
+        Command::Add { name: _ } => {
+            let mut add_parameter_flow = AddParameterFlow::new();
+            add_parameter_flow.start_flow().await;
+        }
+        Command::Update { name: _ } => {
+            todo!()
+        },
+        Command::Delete { name: _ } => {
+            todo!()
+        }
+    }
     Ok(())
 }
 

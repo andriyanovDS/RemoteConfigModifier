@@ -1,9 +1,10 @@
 use authenticator::Authenticator;
 use reqwest::{Client, ClientBuilder, header::{AUTHORIZATION, ETAG, IF_MATCH, ACCEPT_ENCODING}};
-use tracing::info;
 use crate::remote_config::RemoteConfig;
 
 mod authenticator;
+
+const REMOTE_CONFIG_URL: &str = "https://firebaseremoteconfig.googleapis.com/v1/projects/774774183385/remoteConfig";
 
 pub struct NetworkService {
     client: Client,
@@ -31,7 +32,7 @@ impl NetworkService {
 
     pub async fn get_remote_config(&mut self) -> Result<ResponseWithEtag<RemoteConfig>, Box<dyn std::error::Error + Send + Sync>> {
         let access_token = self.authenticator.get_access_token().await?;
-        let response = self.client.get("https://firebaseremoteconfig.googleapis.com/v1/projects/774774183385/remoteConfig")
+        let response = self.client.get(REMOTE_CONFIG_URL)
             .header(AUTHORIZATION, format!("Bearer {}", access_token.as_str()))
             .header(ACCEPT_ENCODING, "gzip, deflate, br")
             .send()
@@ -55,7 +56,7 @@ impl NetworkService {
     )-> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let access_token = self.authenticator.get_access_token().await?;
         let bytes = serde_json::to_string(&config)?.into_bytes();
-        self.client.put("https://firebaseremoteconfig.googleapis.com/v1/projects/774774183385/remoteConfig")
+        self.client.put(REMOTE_CONFIG_URL)
             .header(AUTHORIZATION, format!("Bearer {}", access_token.as_str()))
             .header(ACCEPT_ENCODING, "gzip, deflate, br")
             .header(IF_MATCH, etag)

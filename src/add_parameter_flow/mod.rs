@@ -1,4 +1,5 @@
 use color_eyre::owo_colors::OwoColorize;
+use tracing::{error, info};
 use crate::error::{Error, Result};
 use crate::network::NetworkService;
 use crate::remote_config::{Parameter};
@@ -31,13 +32,13 @@ impl AddParameterFlow {
             Err(message) => Err(Error { message })
         };
         if let Err(error) = result {
-            eprintln!("{}", &error.message.red());
+            error!("{}", error.message.red());
         }
     }
 
     async fn add_parameter(&mut self, name: String, parameter: Parameter) -> Result<()> {
         println!();
-        println!("Downloading remote config...");
+        info!("Downloading remote config...");
         let mut remote_config = self.network_service.get_remote_config().await?;
         if remote_config.parameters.contains_key(&name) {
             let message = format!("Parameter with name {} already exists! Do you want te replace it? (y,n)", name)
@@ -48,10 +49,10 @@ impl AddParameterFlow {
             }
         }
         println!();
-        println!("-----------------------");
+        info!("-----------------------");
         println!();
-        println!("New parameter will be added:");
-        println!("{}", format!("{name}: {:#}", parameter).green());
+        info!("New parameter will be added:");
+        info!("{}", format!("{name}: {:#}", parameter).green());
 
         if !InputReader::ask_confirmation("Confirm: y/n").await? {
             return Ok(());

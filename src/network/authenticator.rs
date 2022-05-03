@@ -1,5 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
+use tracing::info;
 use yup_oauth2::authenticator_delegate::{DefaultInstalledFlowDelegate, InstalledFlowDelegate};
 use yup_oauth2::{AccessToken, InstalledFlowAuthenticator, InstalledFlowReturnMethod};
 
@@ -39,7 +40,7 @@ struct FlowDelegate;
 
 async fn open_url_in_browser(url: &str, need_code: bool) -> Result<String, String> {
     if webbrowser::open(url).is_ok() {
-        println!("Url was opened in the browser");
+        info!("Url was opened in the browser");
     }
     let delegate = DefaultInstalledFlowDelegate;
     delegate.present_user_url(url, need_code).await

@@ -1,3 +1,4 @@
+use tracing::info;
 use std::fmt::Display;
 use tokio::io::AsyncBufReadExt;
 use crate::error::{Error, Result};
@@ -14,7 +15,7 @@ impl InputReader {
             R: TryFrom<String, Error=Error>,
             M: Display + ?Sized
     {
-        println!("{}", request_msg);
+        info!("{}", request_msg);
         let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
         let mut buffer = String::new();
         reader.read_line(&mut buffer).await

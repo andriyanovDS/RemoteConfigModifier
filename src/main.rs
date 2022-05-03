@@ -4,11 +4,12 @@ use color_eyre::Report;
 use remote_config_modifier::add_parameter_flow::AddParameterFlow;
 
 #[tokio::main]
-async fn main() {
-    setup();
+async fn main() -> Result<(), Report> {
+    setup()?;
 
     let mut add_parameter_flow = AddParameterFlow::new();
     add_parameter_flow.start_flow().await;
+    Ok(())
 }
 
 fn setup() -> Result<(), Report> {

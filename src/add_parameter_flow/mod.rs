@@ -39,7 +39,8 @@ impl AddParameterFlow {
     async fn add_parameter(&mut self, name: String, parameter: Parameter) -> Result<()> {
         println!();
         info!("Downloading remote config...");
-        let mut remote_config = self.network_service.get_remote_config().await?;
+        let mut response = self.network_service.get_remote_config().await?;
+        let remote_config = &mut response.data;
         if remote_config.parameters.contains_key(&name) {
             let message = format!("Parameter with name {} already exists! Do you want te replace it? (y,n)", name)
                 .yellow()
@@ -58,6 +59,9 @@ impl AddParameterFlow {
             return Ok(());
         }
         remote_config.parameters.insert(name, parameter);
+        info!("Uploading updated remote config...");
+        self.network_service.update_remote_config(response.data, response.etag).await?;
+        info!("Uploading succeeded.");
         Ok(())
     }
 }

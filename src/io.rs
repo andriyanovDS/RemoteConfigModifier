@@ -1,24 +1,24 @@
-use tracing::info;
+use crate::error::{Error, Result};
 use std::fmt::Display;
 use tokio::io::AsyncBufReadExt;
-use crate::error::{Error, Result};
+use tracing::info;
 
 pub struct InputReader;
 
 pub struct InputString(pub(crate) String);
 
 impl InputReader {
-    pub async fn request_user_input<R, M>(
-        request_msg: &M
-    ) -> Result<R>
-        where
-            R: TryFrom<String, Error=Error>,
-            M: Display + ?Sized
+    pub async fn request_user_input<R, M>(request_msg: &M) -> Result<R>
+    where
+        R: TryFrom<String, Error = Error>,
+        M: Display + ?Sized,
     {
         info!("{}", request_msg);
         let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
         let mut buffer = String::new();
-        reader.read_line(&mut buffer).await
+        reader
+            .read_line(&mut buffer)
+            .await
             .map_err(|_| Error::new("Failed to read input"))
             .map(move |_| {
                 buffer.pop();
@@ -32,7 +32,7 @@ impl InputReader {
         match answer.0.as_ref() {
             "y" | "yes" => Ok(true),
             "n" | "no" => Ok(false),
-            _ => Err(Error::new("Unexpected answer"))
+            _ => Err(Error::new("Unexpected answer")),
         }
     }
 }

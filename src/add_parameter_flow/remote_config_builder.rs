@@ -1,9 +1,9 @@
-use serde_json::Value;
-use std::string::String;
-use colored::{Colorize, ColoredString};
 use crate::error::{Error, Result};
 use crate::io::{InputReader, InputString};
 use crate::remote_config::{Parameter, ParameterValue, ParameterValueType};
+use colored::{ColoredString, Colorize};
+use serde_json::Value;
+use std::string::String;
 
 #[derive(Debug)]
 pub struct RemoteConfigBuilder {
@@ -34,16 +34,14 @@ impl RemoteConfigBuilder {
     }
 
     async fn request_name() -> Self {
-        let result: Result<Parts> = InputReader::request_user_input::<InputString, ColoredString>(&"Enter parameter name:".green())
-            .await
-            .and_then(|name| {
-                Parts::validate_name(name.0).map_err(Error::new)
-            })
-            .map(Parts::new);
+        let result: Result<Parts> = InputReader::request_user_input::<InputString, ColoredString>(
+            &"Enter parameter name:".green(),
+        )
+        .await
+        .and_then(|name| Parts::validate_name(name.0).map_err(Error::new))
+        .map(Parts::new);
 
-        RemoteConfigBuilder {
-            inner: result
-        }
+        RemoteConfigBuilder { inner: result }
     }
 
     async fn request_value_type(self) -> Self {
@@ -55,44 +53,46 @@ impl RemoteConfigBuilder {
         self.and_then(message, |mut parts, value_type| {
             parts.value_type = value_type;
             Ok(parts)
-        }).await
+        })
+        .await
     }
 
     async fn request_default_value(self) -> Self {
         self.and_then("Enter default value:", |parts, value: InputString| {
             parts.set_default_value(value.0).map_err(Error::new)
-        }).await
+        })
+        .await
     }
 
     async fn request_description(self) -> Self {
-        self.and_then("Enter description (Optional):", |mut parts, value: InputString| {
-            let description = value.0;
-            parts.description = if description.is_empty() {
-                None
-            } else {
-                Some(description)
-            };
-            Ok(parts)
-        }).await
+        self.and_then(
+            "Enter description (Optional):",
+            |mut parts, value: InputString| {
+                let description = value.0;
+                parts.description = if description.is_empty() {
+                    None
+                } else {
+                    Some(description)
+                };
+                Ok(parts)
+            },
+        )
+        .await
     }
 
-    async fn and_then<F, P>(
-        self,
-        request_msg: &'static str,
-        parts_modifier: F
-    ) -> Self where F: FnOnce(Parts, P) -> Result<Parts>, P: TryFrom<String, Error=Error> {
+    async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> Self
+    where
+        F: FnOnce(Parts, P) -> Result<Parts>,
+        P: TryFrom<String, Error = Error>,
+    {
         let inner = match self.inner {
-            Ok(parts) => {
-                InputReader::request_user_input::<P, ColoredString>(&request_msg.green()).await.and_then(move |value| {
-                    parts_modifier(parts, value)
-                })
-            }
-            Err(error) => Err(error)
+            Ok(parts) => InputReader::request_user_input::<P, ColoredString>(&request_msg.green())
+                .await
+                .and_then(move |value| parts_modifier(parts, value)),
+            Err(error) => Err(error),
         };
         Self { inner }
     }
-
-
 }
 
 impl Parts {
@@ -123,7 +123,10 @@ impl Parts {
 
     fn set_default_value(self, value: String) -> std::result::Result<Self, &'static str> {
         let mut parts = match &self.value_type {
-            ParameterValueType::Boolean => value.parse::<bool>().map(move|_| self).map_err(|_| "Value must boolean"),
+            ParameterValueType::Boolean => value
+                .parse::<bool>()
+                .map(move |_| self)
+                .map_err(|_| "Value must boolean"),
             ParameterValueType::Number => {
                 if value.chars().all(|char| char.is_numeric()) {
                     Ok(self)
@@ -132,12 +135,10 @@ impl Parts {
                 }
             }
             ParameterValueType::String => Ok(self),
-            ParameterValueType::Json => {
-                serde_json::from_str::<Value>(&value)
-                    .map_err(|_| "Invalid JSON")
-                    .map(move|_| self)
-            }
-            ParameterValueType::Unspecified => panic!("Unsupported value type")
+            ParameterValueType::Json => serde_json::from_str::<Value>(&value)
+                .map_err(|_| "Invalid JSON")
+                .map(move |_| self),
+            ParameterValueType::Unspecified => panic!("Unsupported value type"),
         }?;
         parts.default_value = ParameterValue::Value(value);
         Ok(parts)

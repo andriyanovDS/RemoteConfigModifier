@@ -1,10 +1,11 @@
 use color_eyre::owo_colors::OwoColorize;
-use tracing::{error, info};
 use crate::error::{Error, Result};
+use crate::io::InputReader;
 use crate::network::NetworkService;
-use crate::remote_config::{Parameter};
-use crate::io::{InputReader};
+use crate::remote_config::Parameter;
+use colored::Colorize;
 use remote_config_builder::RemoteConfigBuilder;
+use tracing::{error, info};
 
 mod remote_config_builder;
 
@@ -12,9 +13,9 @@ pub struct AddParameterFlow {
     network_service: NetworkService,
 }
 impl Default for AddParameterFlow {
-   fn default() -> Self {
-       Self::new()
-   }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AddParameterFlow {
@@ -24,12 +25,10 @@ impl AddParameterFlow {
         }
     }
 
-    pub async fn start_flow(&mut self) {
+    pub async fn start_flow(mut self) {
         let result = match RemoteConfigBuilder::start_flow().await {
-            Ok((name, parameter)) => {
-                self.add_parameter(name, parameter).await
-            },
-            Err(message) => Err(Error { message })
+            Ok((name, parameter)) => self.add_parameter(name, parameter).await,
+            Err(message) => Err(Error { message }),
         };
         if let Err(error) = result {
             error!("{}", error.message.red());
@@ -42,16 +41,15 @@ impl AddParameterFlow {
         let mut response = self.network_service.get_remote_config().await?;
         let remote_config = &mut response.data;
         if remote_config.parameters.contains_key(&name) {
-            let message = format!("Parameter with name {} already exists! Do you want te replace it? (y,n)", name)
-                .yellow()
-                .to_string();
+            let message = format!(
+                "Parameter with name {} already exists! Do you want te replace it? (y,n)",
+                name
+            );
+            let message = message.yellow().to_string();
             if !InputReader::ask_confirmation(&message).await? {
                 return Ok(());
             }
         }
-        println!();
-        info!("-----------------------");
-        println!();
         info!("New parameter will be added:");
         info!("{}", format!("{name}: {:#}", parameter).green());
 
@@ -60,16 +58,10 @@ impl AddParameterFlow {
         }
         remote_config.parameters.insert(name, parameter);
         info!("Uploading updated remote config...");
-        self.network_service.update_remote_config(response.data, response.etag).await?;
+        self.network_service
+            .update_remote_config(response.data, response.etag)
+            .await?;
         info!("Uploading succeeded.");
         Ok(())
-    }
-}
-
-impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
-    fn from(error: Box<dyn std::error::Error + Send + Sync>) -> Self {
-        Self {
-            message: format!("{}", error)
-        }
     }
 }

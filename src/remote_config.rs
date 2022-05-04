@@ -69,11 +69,9 @@ impl Display for Condition {
         let entries = [
             ("name", Debug::fmt(&self.name, f)?),
             ("expression", Display::fmt(&self.expression, f)?),
-            ("tag_color", Debug::fmt(&self.tag_color, f)?)
+            ("tag_color", Debug::fmt(&self.tag_color, f)?),
         ];
-        f.debug_map()
-            .entries(entries)
-            .finish()
+        f.debug_map().entries(entries).finish()
     }
 }
 
@@ -83,17 +81,13 @@ impl Display for Parameter {
             write!(
                 f,
                 "{{\n default_value: {:?},\n value_type: {:?},\n description: {:?}\n}}",
-                self.default_value,
-                self.value_type,
-                self.description
+                self.default_value, self.value_type, self.description
             )
         } else {
             write!(
                 f,
                 "{{ default_value: {:?}, value_type: {:?}, description: {:?} }}",
-                self.default_value,
-                self.value_type,
-                self.description
+                self.default_value, self.value_type, self.description
             )
         }
     }
@@ -103,9 +97,7 @@ impl Display for ParameterValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut map = f.debug_map();
         let map = match self {
-            ParameterValue::Value(value) => {
-                map.entries([("value", value)])
-            }
+            ParameterValue::Value(value) => map.entries([("value", value)]),
             ParameterValue::UseInAppDefault(use_default) => {
                 map.entries([("useInAppDefault", use_default)])
             }

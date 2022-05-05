@@ -3,9 +3,12 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct RemoteConfig {
     pub conditions: Vec<Condition>,
     pub parameters: HashMap<String, Parameter>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameter_groups: Option<HashMap<String, ParameterGroup>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -32,6 +35,13 @@ enum TagColor {
     Pink,
     Purple,
     Teal,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct ParameterGroup {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub parameters: HashMap<String, Parameter>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -129,6 +139,7 @@ mod tests {
         let remote_config = RemoteConfig {
             conditions: vec![condition],
             parameters,
+            parameter_groups: None,
         };
         let result = serde_json::to_string(&remote_config).unwrap();
         assert_eq!(result, "{\
@@ -195,6 +206,7 @@ mod tests {
         let expected_config = RemoteConfig {
             conditions: vec![],
             parameters,
+            parameter_groups: None,
         };
         assert_eq!(received_remote_config, expected_config)
     }

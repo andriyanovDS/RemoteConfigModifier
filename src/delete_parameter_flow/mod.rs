@@ -24,8 +24,6 @@ impl<'a> DeleteParameterFlow<'a> {
     }
 
     async fn delete_parameter(&mut self) -> Result<()> {
-        println!();
-        info!("Downloading remote config...");
         let mut response = self.network_service.get_remote_config().await?;
         let remote_config = &mut response.data;
         let parameter = remote_config.parameters.remove(self.name);
@@ -42,11 +40,9 @@ impl<'a> DeleteParameterFlow<'a> {
             info!("Operation was canceled.");
             return Ok(());
         }
-        info!("Uploading updated remote config...");
         self.network_service
             .update_remote_config(response.data, response.etag)
             .await?;
-        info!("Uploading succeeded. Parameter was removed");
         Ok(())
     }
 }

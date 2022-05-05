@@ -106,10 +106,11 @@ impl NetworkService {
         let mut spinner = Spinner::new(Spinners::Dots12, start_message.into());
         let result = future.await;
         if result.is_ok() {
+            print!("\r");
             spinner.stop_with_message(completion_message.into());
             println!();
         } else {
-            spinner.stop_with_newline();
+            println!();
         }
         result
     }

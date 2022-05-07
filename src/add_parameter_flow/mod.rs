@@ -3,10 +3,10 @@ use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
 use crate::remote_config::{Parameter, RemoteConfig};
 use color_eyre::owo_colors::OwoColorize;
-use remote_config_builder::RemoteConfigBuilder;
+use parameter_builder::ParameterBuilder;
 use tracing::{error, info};
 
-mod remote_config_builder;
+mod parameter_builder;
 
 pub struct AddParameterFlow {
     name: Option<String>,
@@ -40,7 +40,7 @@ impl AddParameterFlow {
             .map_err(Error::from)
         {
             Ok(response) => {
-                let future = RemoteConfigBuilder::start_flow(
+                let future = ParameterBuilder::start_flow(
                     &response.data,
                     self.name.take(),
                     self.description.take(),

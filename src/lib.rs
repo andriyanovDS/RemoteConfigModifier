@@ -5,7 +5,7 @@ mod io;
 mod network;
 mod remote_config;
 
-use clap::{Parser, Subcommand, Args};
+use clap::{Args, Parser, Subcommand};
 
 /// CLI to add, update and delete Firebase Remote Config parameters
 #[derive(Parser)]
@@ -30,5 +30,5 @@ pub struct Add {
     #[clap(short, long)]
     pub name: Option<String>,
     #[clap(short, long)]
-    pub description: Option<String>
+    pub description: Option<String>,
 }

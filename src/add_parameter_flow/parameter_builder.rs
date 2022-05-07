@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::string::String;
 
 #[derive(Debug)]
-pub struct RemoteConfigBuilder<'a> {
+pub struct ParameterBuilder<'a> {
     parts: Parts,
     remote_config: &'a RemoteConfig,
 }
@@ -21,27 +21,30 @@ struct Parts {
     conditional_values: Option<HashMap<String, ParameterValue>>,
 }
 
-type BuilderResult<'a> = crate::error::Result<RemoteConfigBuilder<'a>>;
+type BuilderResult<'a> = crate::error::Result<ParameterBuilder<'a>>;
 
-impl<'a> RemoteConfigBuilder<'a> {
+impl<'a> ParameterBuilder<'a> {
     pub async fn start_flow(
         remote_config: &'a RemoteConfig,
         name: Option<String>,
         description: Option<String>,
     ) -> Result<(String, Parameter), String> {
-        let name = name.map(Parts::validate_name).transpose().map_err(Error::new)?;
-        let builder: RemoteConfigBuilder = match (name, description) {
+        let name = name
+            .map(Parts::validate_name)
+            .transpose()
+            .map_err(Error::new)?;
+        let builder: ParameterBuilder = match (name, description) {
             (Some(name), Some(description)) => {
                 let mut parts = Parts::new(name);
                 parts.description = Some(description);
-                RemoteConfigBuilder {
+                ParameterBuilder {
                     parts,
                     remote_config,
                 }
             }
             (Some(name), None) => {
                 let parts = Parts::new(name);
-                let builder = RemoteConfigBuilder {
+                let builder = ParameterBuilder {
                     parts,
                     remote_config,
                 };
@@ -50,14 +53,14 @@ impl<'a> RemoteConfigBuilder<'a> {
             (None, Some(description)) => {
                 let mut parts = Parts::new(Self::request_name().await?);
                 parts.description = Some(description);
-                RemoteConfigBuilder {
+                ParameterBuilder {
                     parts,
                     remote_config,
                 }
             }
             (None, None) => {
                 let parts = Parts::new(Self::request_name().await?);
-                let builder = RemoteConfigBuilder {
+                let builder = ParameterBuilder {
                     parts,
                     remote_config,
                 };
@@ -161,7 +164,7 @@ impl<'a> RemoteConfigBuilder<'a> {
                 Some(map)
             }
         };
-        Ok(RemoteConfigBuilder {
+        Ok(ParameterBuilder {
             parts,
             remote_config: self.remote_config,
         })
@@ -176,7 +179,7 @@ impl<'a> RemoteConfigBuilder<'a> {
         InputReader::request_user_input::<P, ColoredString>(&request_msg.green())
             .await
             .and_then(|value| parts_modifier(parts, value))
-            .map(|parts| RemoteConfigBuilder {
+            .map(|parts| ParameterBuilder {
                 parts,
                 remote_config: self.remote_config,
             })

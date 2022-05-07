@@ -67,7 +67,7 @@ pub enum ParameterValueType {
     Json,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum ParameterValue {
     Value(String),
@@ -87,19 +87,19 @@ impl Display for Condition {
 
 impl Display for Parameter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if f.alternate() {
-            write!(
-                f,
-                "{{\n default_value: {:?},\n value_type: {:?},\n description: {:?},\n conditional_values: {:?}\n}}",
-                self.default_value, self.value_type, self.description, self.conditional_values
-            )
-        } else {
-            write!(
-                f,
-                "{{ default_value: {:?}, value_type: {:?}, description: {:?}, conditional_values: {:?} }}",
-                self.default_value, self.value_type, self.description, self.conditional_values
-            )
+        let new_line = if f.alternate() { '\n' } else { ' ' };
+        write!(f, "{{ {new_line}")?;
+        write!(f, "  value_type: {:?},{new_line}", self.value_type)?;
+        if let Some(value) = &self.default_value {
+            write!(f, "  default_value: {value:?},{new_line}")?;
         }
+        if let Some(value) = &self.description {
+            write!(f, "  description: {value},{new_line}")?;
+        }
+        if let Some(value) = &self.conditional_values {
+            write!(f, "  conditional_values: {value:#?},{new_line}")?;
+        }
+        write!(f, "}}")
     }
 }
 
@@ -113,6 +113,15 @@ impl Display for ParameterValue {
             }
         };
         map.finish()
+    }
+}
+
+impl Debug for ParameterValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParameterValue::Value(value) => write!(f, "{value}"),
+            ParameterValue::UseInAppDefault(use_default) => write!(f, "{use_default}")
+        }
     }
 }
 

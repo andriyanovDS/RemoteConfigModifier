@@ -75,7 +75,7 @@ impl AddParameterFlow {
             }
         }
         info!("New parameter will be added:");
-        info!("{}", format!("{name}: {:#}", parameter).green());
+        println!("{}", format!("{name}: {:#}", parameter).green());
 
         if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
             return Ok(());

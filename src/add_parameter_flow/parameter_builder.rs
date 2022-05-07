@@ -127,20 +127,21 @@ impl<'a> ParameterBuilder<'a> {
             return Ok(self);
         }
         let message = format!("{}", "Do you want to add conditional value? [Y,n]".green());
-        if !InputReader::ask_confirmation(&message).await? {
-            return Ok(self);
-        }
-        println!();
-        println!("Select one of available conditions:");
-        let condition_names = self
-            .remote_config
-            .conditions
-            .iter()
-            .map(|cond| cond.name.as_str());
-        let selected_number = InputReader::request_select_item_in_list(condition_names).await?;
-        match selected_number {
+        match self.request_select_condition(&message).await? {
             None => Ok(self),
-            Some(index) => self.request_value_for_condition(index).await,
+            Some(index) => {
+                let mut builder = self.request_value_for_condition(index).await?;
+                let message = format!(
+                    "{}",
+                    "Do you want to add additional conditional value? [Y,n]".green()
+                );
+                while let Some(selected_index) =
+                    builder.request_select_condition(&message).await?
+                {
+                    builder = builder.request_value_for_condition(selected_index).await?;
+                }
+                Ok(builder)
+            }
         }
     }
 
@@ -168,6 +169,23 @@ impl<'a> ParameterBuilder<'a> {
             parts,
             remote_config: self.remote_config,
         })
+    }
+
+    async fn request_select_condition(
+        &self,
+        message: &str,
+    ) -> crate::error::Result<Option<usize>> {
+        if !InputReader::ask_confirmation(message).await? {
+            return Ok(None);
+        }
+        println!();
+        println!("Select one of available conditions:");
+        let condition_names = self
+            .remote_config
+            .conditions
+            .iter()
+            .map(|cond| cond.name.as_str());
+        InputReader::request_select_item_in_list(condition_names).await
     }
 
     async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> BuilderResult<'a>

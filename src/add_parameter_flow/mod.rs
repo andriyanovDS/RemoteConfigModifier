@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use crate::io::InputReader;
-use crate::network::NetworkService;
-use crate::remote_config::Parameter;
+use crate::network::{NetworkService, ResponseWithEtag};
+use crate::remote_config::{Parameter, RemoteConfig};
 use color_eyre::owo_colors::OwoColorize;
 use remote_config_builder::RemoteConfigBuilder;
 use tracing::{error, info};
@@ -25,21 +25,35 @@ impl AddParameterFlow {
     }
 
     pub async fn start_flow(mut self) {
-        let result = match RemoteConfigBuilder::start_flow().await {
-            Ok((name, parameter)) => self.add_parameter(name, parameter).await,
-            Err(message) => Err(Error { message }),
-        };
-        if let Err(error) = result {
-            error!("{}", error.message.red());
+        match self
+            .network_service
+            .get_remote_config()
+            .await
+            .map_err(Error::from)
+        {
+            Ok(response) => {
+                let result = match RemoteConfigBuilder::start_flow(&response.data).await {
+                    Ok((name, parameter)) => self.add_parameter(name, parameter, response).await,
+                    Err(message) => Err(Error { message }),
+                };
+                if let Err(error) = result {
+                    error!("{}", error.message.red());
+                }
+            }
+            Err(error) => error!("{}", error.message.red()),
         }
     }
 
-    async fn add_parameter(&mut self, name: String, parameter: Parameter) -> Result<()> {
-        let mut response = self.network_service.get_remote_config().await?;
+    async fn add_parameter(
+        &mut self,
+        name: String,
+        parameter: Parameter,
+        mut response: ResponseWithEtag<RemoteConfig>,
+    ) -> Result<()> {
         let remote_config = &mut response.data;
         if remote_config.parameters.contains_key(&name) {
             let message = format!(
-                "Parameter with name {} already exists! Do you want te replace it? [Y,n]]",
+                "Parameter with name {} already exists! Do you want te replace it? [Y,n]",
                 name
             );
             let message = message.yellow().to_string();

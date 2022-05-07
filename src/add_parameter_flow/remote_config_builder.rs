@@ -1,13 +1,15 @@
-use crate::error::{Error, Result};
+use crate::error::Error;
 use crate::io::{InputReader, InputString};
-use crate::remote_config::{Parameter, ParameterValue, ParameterValueType};
+use crate::remote_config::{Parameter, ParameterValue, ParameterValueType, RemoteConfig};
 use colored::{ColoredString, Colorize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::string::String;
 
 #[derive(Debug)]
-pub struct RemoteConfigBuilder {
-    inner: Result<Parts>,
+pub struct RemoteConfigBuilder<'a> {
+    parts: Parts,
+    remote_config: &'a RemoteConfig,
 }
 
 #[derive(Debug)]
@@ -16,55 +18,43 @@ struct Parts {
     description: Option<String>,
     default_value: ParameterValue,
     value_type: ParameterValueType,
+    conditional_values: Option<HashMap<String, ParameterValue>>,
 }
 
-impl RemoteConfigBuilder {
-    pub async fn start_flow() -> std::result::Result<(String, Parameter), String> {
-        Self::request_name()
-            .await
-            .request_value_type()
-            .await
-            .request_default_value()
-            .await
+type BuilderResult<'a> = crate::error::Result<RemoteConfigBuilder<'a>>;
+
+impl<'a> RemoteConfigBuilder<'a> {
+    pub async fn start_flow(
+        remote_config: &'a RemoteConfig,
+    ) -> Result<(String, Parameter), String> {
+        let initial_inner = Self::request_name().await?;
+        let builder = RemoteConfigBuilder {
+            parts: initial_inner,
+            remote_config,
+        };
+        builder
             .request_description()
+            .await?
+            .request_value_type()
+            .await?
+            .request_default_value()
+            .await?
+            .request_condition()
             .await
-            .inner
-            .map(|parts| parts.parameter())
-            .map_err(|error| error.message)
+            .map(|builder| builder.parts.parameter())
+            .map_err(String::from)
     }
 
-    async fn request_name() -> Self {
-        let result: Result<Parts> = InputReader::request_user_input::<InputString, ColoredString>(
+    async fn request_name() -> crate::error::Result<Parts> {
+        InputReader::request_user_input::<InputString, ColoredString>(
             &"Enter parameter name:".green(),
         )
         .await
         .and_then(|name| Parts::validate_name(name.0).map_err(Error::new))
-        .map(Parts::new);
-
-        RemoteConfigBuilder { inner: result }
+        .map(Parts::new)
     }
 
-    async fn request_value_type(self) -> Self {
-        let message = "Enter value type. It can be one of the following: \
-            Boolean [b], \
-            Number [n], \
-            JSON [j], \
-            String [s]: ";
-        self.and_then(message, |mut parts, value_type| {
-            parts.value_type = value_type;
-            Ok(parts)
-        })
-        .await
-    }
-
-    async fn request_default_value(self) -> Self {
-        self.and_then("Enter default value:", |parts, value: InputString| {
-            parts.set_default_value(value.0).map_err(Error::new)
-        })
-        .await
-    }
-
-    async fn request_description(self) -> Self {
+    async fn request_description(self) -> BuilderResult<'a> {
         self.and_then(
             "Enter description (Optional):",
             |mut parts, value: InputString| {
@@ -80,18 +70,87 @@ impl RemoteConfigBuilder {
         .await
     }
 
-    async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> Self
+    async fn request_value_type(self) -> BuilderResult<'a> {
+        let message = "Enter value type. It can be one of the following: \
+            Boolean [b], \
+            Number [n], \
+            JSON [j], \
+            String [s]: ";
+        self.and_then(message, |mut parts, value_type| {
+            parts.value_type = value_type;
+            Ok(parts)
+        })
+        .await
+    }
+
+    async fn request_default_value(self) -> BuilderResult<'a> {
+        self.and_then("Enter default value:", |parts, value: InputString| {
+            parts.set_default_value(value.0).map_err(Error::new)
+        })
+        .await
+    }
+
+    async fn request_condition(self) -> BuilderResult<'a> {
+        if self.remote_config.conditions.is_empty() {
+            return Ok(self);
+        }
+        let message = format!("{}", "Do you want to add conditional value? [Y,n]".green());
+        if !InputReader::ask_confirmation(&message).await? {
+            return Ok(self);
+        }
+        println!();
+        println!("Select one of available conditions:");
+        let condition_names = self
+            .remote_config
+            .conditions
+            .iter()
+            .map(|cond| cond.name.as_str());
+        let selected_number = InputReader::request_select_item_in_list(condition_names).await?;
+        match selected_number {
+            None => Ok(self),
+            Some(index) => self.request_value_for_condition(index).await,
+        }
+    }
+
+    async fn request_value_for_condition(self, condition_index: usize) -> BuilderResult<'a> {
+        let value = InputReader::request_user_input::<InputString, ColoredString>(
+            &"Enter value for condition:".green(),
+        )
+        .await?;
+        let valid_value =
+            Parts::validate_value(value.0, &self.parts.value_type).map_err(Error::new)?;
+        let mut parts = self.parts;
+        let condition_name = self.remote_config.conditions[condition_index].name.clone();
+        parts.conditional_values = match parts.conditional_values {
+            Some(mut map) => {
+                map.insert(condition_name, ParameterValue::Value(valid_value));
+                Some(map)
+            }
+            None => {
+                let mut map = HashMap::new();
+                map.insert(condition_name, ParameterValue::Value(valid_value));
+                Some(map)
+            }
+        };
+        Ok(RemoteConfigBuilder {
+            parts,
+            remote_config: self.remote_config,
+        })
+    }
+
+    async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> BuilderResult<'a>
     where
-        F: FnOnce(Parts, P) -> Result<Parts>,
+        F: FnOnce(Parts, P) -> crate::error::Result<Parts>,
         P: TryFrom<String, Error = Error>,
     {
-        let inner = match self.inner {
-            Ok(parts) => InputReader::request_user_input::<P, ColoredString>(&request_msg.green())
-                .await
-                .and_then(move |value| parts_modifier(parts, value)),
-            Err(error) => Err(error),
-        };
-        Self { inner }
+        let parts = self.parts;
+        InputReader::request_user_input::<P, ColoredString>(&request_msg.green())
+            .await
+            .and_then(|value| parts_modifier(parts, value))
+            .map(|parts| RemoteConfigBuilder {
+                parts,
+                remote_config: self.remote_config,
+            })
     }
 }
 
@@ -102,10 +161,11 @@ impl Parts {
             description: None,
             default_value: ParameterValue::Value(String::new()),
             value_type: ParameterValueType::String,
+            conditional_values: None,
         }
     }
 
-    fn validate_name(name: String) -> std::result::Result<String, &'static str> {
+    fn validate_name(name: String) -> Result<String, &'static str> {
         if name.is_empty() {
             return Err("Name must contain at least one character");
         }
@@ -121,25 +181,33 @@ impl Parts {
         }
     }
 
-    fn set_default_value(self, value: String) -> std::result::Result<Self, &'static str> {
-        let mut parts = match &self.value_type {
+    fn validate_value(
+        value: String,
+        value_type: &ParameterValueType,
+    ) -> Result<String, &'static str> {
+        match value_type {
             ParameterValueType::Boolean => value
                 .parse::<bool>()
-                .map(move |_| self)
+                .map(|_| value)
                 .map_err(|_| "Value must boolean"),
             ParameterValueType::Number => {
                 if value.chars().all(|char| char.is_numeric()) {
-                    Ok(self)
+                    Ok(value)
                 } else {
-                    Err("Value must numeric")
+                    Err("Value must be numeric")
                 }
             }
-            ParameterValueType::String => Ok(self),
+            ParameterValueType::String => Ok(value),
             ParameterValueType::Json => serde_json::from_str::<Value>(&value)
                 .map_err(|_| "Invalid JSON")
-                .map(move |_| self),
+                .map(|_| value),
             ParameterValueType::Unspecified => panic!("Unsupported value type"),
-        }?;
+        }
+    }
+
+    fn set_default_value(self, value: String) -> Result<Self, &'static str> {
+        let value = Self::validate_value(value, &self.value_type)?;
+        let mut parts = self;
         parts.default_value = ParameterValue::Value(value);
         Ok(parts)
     }
@@ -147,7 +215,7 @@ impl Parts {
     fn parameter(self) -> (String, Parameter) {
         let parameter = Parameter {
             default_value: Some(self.default_value),
-            conditional_values: None,
+            conditional_values: self.conditional_values,
             description: self.description,
             value_type: self.value_type,
         };
@@ -158,7 +226,7 @@ impl Parts {
 impl TryFrom<String> for ParameterValueType {
     type Error = Error;
 
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         match &value.to_lowercase().as_ref() {
             &"b" | &"boolean" => Ok(Self::Boolean),
             &"j" | &"json" => Ok(Self::Json),
@@ -172,7 +240,13 @@ impl TryFrom<String> for ParameterValueType {
 impl TryFrom<String> for ParameterValue {
     type Error = Error;
 
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         Ok(Self::Value(value))
+    }
+}
+
+impl From<Error> for String {
+    fn from(error: Error) -> String {
+        error.message
     }
 }

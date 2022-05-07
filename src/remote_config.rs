@@ -14,7 +14,7 @@ pub struct RemoteConfig {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
-    name: String,
+    pub name: String,
     expression: String,
     tag_color: TagColor,
 }
@@ -90,14 +90,14 @@ impl Display for Parameter {
         if f.alternate() {
             write!(
                 f,
-                "{{\n default_value: {:?},\n value_type: {:?},\n description: {:?}\n}}",
-                self.default_value, self.value_type, self.description
+                "{{\n default_value: {:?},\n value_type: {:?},\n description: {:?},\n conditional_values: {:?}\n}}",
+                self.default_value, self.value_type, self.description, self.conditional_values
             )
         } else {
             write!(
                 f,
-                "{{ default_value: {:?}, value_type: {:?}, description: {:?} }}",
-                self.default_value, self.value_type, self.description
+                "{{ default_value: {:?}, value_type: {:?}, description: {:?}, conditional_values: {:?} }}",
+                self.default_value, self.value_type, self.description, self.conditional_values
             )
         }
     }

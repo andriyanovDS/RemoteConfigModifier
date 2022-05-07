@@ -240,13 +240,10 @@ impl Parts {
                 .parse::<bool>()
                 .map(|_| value)
                 .map_err(|_| "Value must boolean"),
-            ParameterValueType::Number => {
-                if value.chars().all(|char| char.is_numeric()) {
-                    Ok(value)
-                } else {
-                    Err("Value must be numeric")
-                }
-            }
+            ParameterValueType::Number => value
+                .parse::<f32>()
+                .map(|_| value)
+                .map_err(|_| "Value must be numeric"),
             ParameterValueType::String => Ok(value),
             ParameterValueType::Json => serde_json::from_str::<Value>(&value)
                 .map_err(|_| "Invalid JSON")

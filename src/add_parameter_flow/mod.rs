@@ -39,7 +39,7 @@ impl AddParameterFlow {
         let remote_config = &mut response.data;
         if remote_config.parameters.contains_key(&name) {
             let message = format!(
-                "Parameter with name {} already exists! Do you want te replace it? (y,n)",
+                "Parameter with name {} already exists! Do you want te replace it? [Y,n]]",
                 name
             );
             let message = message.yellow().to_string();
@@ -50,7 +50,7 @@ impl AddParameterFlow {
         info!("New parameter will be added:");
         info!("{}", format!("{name}: {:#}", parameter).green());
 
-        if !InputReader::ask_confirmation("Confirm: y/n").await? {
+        if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
             return Ok(());
         }
         remote_config.parameters.insert(name, parameter);

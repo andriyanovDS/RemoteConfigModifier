@@ -29,7 +29,7 @@ impl InputReader {
 
     pub async fn ask_confirmation(confirmation_msg: &str) -> Result<bool> {
         let answer = Self::request_user_input::<InputString, str>(confirmation_msg).await?;
-        match answer.0.as_ref() {
+        match answer.0.to_lowercase().as_ref() {
             "y" | "yes" => Ok(true),
             "n" | "no" => Ok(false),
             _ => Err(Error::new("Unexpected answer")),

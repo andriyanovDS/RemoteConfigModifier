@@ -36,7 +36,7 @@ impl<'a> DeleteParameterFlow<'a> {
         let message = format!("{} parameter will be removed", &self.name);
         warn!("{}", message.yellow());
         warn!("{:#}", &parameter);
-        if !InputReader::ask_confirmation("Confirm: y/n").await? {
+        if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
             info!("Operation was canceled.");
             return Ok(());
         }

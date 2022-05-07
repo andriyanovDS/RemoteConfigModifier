@@ -26,15 +26,45 @@ type BuilderResult<'a> = crate::error::Result<RemoteConfigBuilder<'a>>;
 impl<'a> RemoteConfigBuilder<'a> {
     pub async fn start_flow(
         remote_config: &'a RemoteConfig,
+        name: Option<String>,
+        description: Option<String>,
     ) -> Result<(String, Parameter), String> {
-        let initial_inner = Self::request_name().await?;
-        let builder = RemoteConfigBuilder {
-            parts: initial_inner,
-            remote_config,
+        let name = name.map(Parts::validate_name).transpose().map_err(Error::new)?;
+        let builder: RemoteConfigBuilder = match (name, description) {
+            (Some(name), Some(description)) => {
+                let mut parts = Parts::new(name);
+                parts.description = Some(description);
+                RemoteConfigBuilder {
+                    parts,
+                    remote_config,
+                }
+            }
+            (Some(name), None) => {
+                let parts = Parts::new(name);
+                let builder = RemoteConfigBuilder {
+                    parts,
+                    remote_config,
+                };
+                builder.request_description().await?
+            }
+            (None, Some(description)) => {
+                let mut parts = Parts::new(Self::request_name().await?);
+                parts.description = Some(description);
+                RemoteConfigBuilder {
+                    parts,
+                    remote_config,
+                }
+            }
+            (None, None) => {
+                let parts = Parts::new(Self::request_name().await?);
+                let builder = RemoteConfigBuilder {
+                    parts,
+                    remote_config,
+                };
+                builder.request_description().await?
+            }
         };
         builder
-            .request_description()
-            .await?
             .request_value_type()
             .await?
             .request_default_value()
@@ -45,13 +75,12 @@ impl<'a> RemoteConfigBuilder<'a> {
             .map_err(String::from)
     }
 
-    async fn request_name() -> crate::error::Result<Parts> {
+    async fn request_name() -> crate::error::Result<String> {
         InputReader::request_user_input::<InputString, ColoredString>(
             &"Enter parameter name:".green(),
         )
         .await
         .and_then(|name| Parts::validate_name(name.0).map_err(Error::new))
-        .map(Parts::new)
     }
 
     async fn request_description(self) -> BuilderResult<'a> {
@@ -172,12 +201,12 @@ impl Parts {
         let mut characters = name.chars();
         let first_char = characters.next().unwrap();
         if !first_char.is_ascii_alphabetic() && first_char != '_' {
-            return Err("Parameter keys must start with an underscore or English letter character [A-Z, a-z]");
+            return Err("Parameter name must start with an underscore or English letter character [A-Z, a-z]");
         }
         if characters.all(|char| char.is_ascii_alphanumeric() || char == '_') {
             Ok(name)
         } else {
-            Err("Parameter keys can only include English letter characters, numbers and underscore")
+            Err("Parameter name can only include English letter characters, numbers and underscore")
         }
     }
 

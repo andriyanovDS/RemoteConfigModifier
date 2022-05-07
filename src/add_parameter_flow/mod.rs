@@ -9,17 +9,25 @@ use tracing::{error, info};
 mod remote_config_builder;
 
 pub struct AddParameterFlow {
+    name: Option<String>,
+    description: Option<String>,
     network_service: NetworkService,
 }
 impl Default for AddParameterFlow {
     fn default() -> Self {
-        Self::new()
+        Self {
+            name: None,
+            description: None,
+            network_service: NetworkService::new(),
+        }
     }
 }
 
 impl AddParameterFlow {
-    pub fn new() -> Self {
+    pub fn new(name: Option<String>, description: Option<String>) -> Self {
         Self {
+            name,
+            description,
             network_service: NetworkService::new(),
         }
     }
@@ -32,7 +40,12 @@ impl AddParameterFlow {
             .map_err(Error::from)
         {
             Ok(response) => {
-                let result = match RemoteConfigBuilder::start_flow(&response.data).await {
+                let future = RemoteConfigBuilder::start_flow(
+                    &response.data,
+                    self.name.take(),
+                    self.description.take(),
+                );
+                let result = match future.await {
                     Ok((name, parameter)) => self.add_parameter(name, parameter, response).await,
                     Err(message) => Err(Error { message }),
                 };

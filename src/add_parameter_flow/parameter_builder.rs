@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::io::{InputReader, InputString};
-use crate::remote_config::{Parameter, ParameterValue, ParameterValueType, RemoteConfig};
+use crate::remote_config::{Condition, Parameter, ParameterValue, ParameterValueType};
 use colored::{ColoredString, Colorize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use std::string::String;
 #[derive(Debug)]
 pub struct ParameterBuilder<'a> {
     parts: Parts,
-    remote_config: &'a RemoteConfig,
+    conditions: &'a [Condition],
 }
 
 #[derive(Debug)]
@@ -25,9 +25,9 @@ type BuilderResult<'a> = crate::error::Result<ParameterBuilder<'a>>;
 
 impl<'a> ParameterBuilder<'a> {
     pub async fn start_flow(
-        remote_config: &'a RemoteConfig,
         name: Option<String>,
         description: Option<String>,
+        conditions: &'a [Condition],
     ) -> Result<(String, Parameter), String> {
         let name = name
             .map(Parts::validate_name)
@@ -37,33 +37,21 @@ impl<'a> ParameterBuilder<'a> {
             (Some(name), Some(description)) => {
                 let mut parts = Parts::new(name);
                 parts.description = Some(description);
-                ParameterBuilder {
-                    parts,
-                    remote_config,
-                }
+                ParameterBuilder { parts, conditions }
             }
             (Some(name), None) => {
                 let parts = Parts::new(name);
-                let builder = ParameterBuilder {
-                    parts,
-                    remote_config,
-                };
+                let builder = ParameterBuilder { parts, conditions };
                 builder.request_description().await?
             }
             (None, Some(description)) => {
                 let mut parts = Parts::new(Self::request_name().await?);
                 parts.description = Some(description);
-                ParameterBuilder {
-                    parts,
-                    remote_config,
-                }
+                ParameterBuilder { parts, conditions }
             }
             (None, None) => {
                 let parts = Parts::new(Self::request_name().await?);
-                let builder = ParameterBuilder {
-                    parts,
-                    remote_config,
-                };
+                let builder = ParameterBuilder { parts, conditions };
                 builder.request_description().await?
             }
         };
@@ -123,7 +111,7 @@ impl<'a> ParameterBuilder<'a> {
     }
 
     async fn request_condition(self) -> BuilderResult<'a> {
-        if self.remote_config.conditions.is_empty() {
+        if self.conditions.is_empty() {
             return Ok(self);
         }
         let message = format!("{}", "Do you want to add conditional value? [Y,n]".green());
@@ -151,7 +139,7 @@ impl<'a> ParameterBuilder<'a> {
         let valid_value =
             Parts::validate_value(value.0, &self.parts.value_type).map_err(Error::new)?;
         let mut parts = self.parts;
-        let condition_name = self.remote_config.conditions[condition_index].name.clone();
+        let condition_name = self.conditions[condition_index].name.clone();
         parts.conditional_values = match parts.conditional_values {
             Some(mut map) => {
                 map.insert(condition_name, ParameterValue::Value(valid_value));
@@ -165,7 +153,7 @@ impl<'a> ParameterBuilder<'a> {
         };
         Ok(ParameterBuilder {
             parts,
-            remote_config: self.remote_config,
+            conditions: self.conditions,
         })
     }
 
@@ -175,11 +163,7 @@ impl<'a> ParameterBuilder<'a> {
         }
         println!();
         println!("Select one of available conditions:");
-        let condition_names = self
-            .remote_config
-            .conditions
-            .iter()
-            .map(|cond| cond.name.as_str());
+        let condition_names = self.conditions.iter().map(|cond| cond.name.as_str());
         InputReader::request_select_item_in_list(condition_names, None).await
     }
 
@@ -194,7 +178,7 @@ impl<'a> ParameterBuilder<'a> {
             .and_then(|value| parts_modifier(parts, value))
             .map(|parts| ParameterBuilder {
                 parts,
-                remote_config: self.remote_config,
+                conditions: self.conditions,
             })
     }
 }

@@ -6,7 +6,7 @@ use color_eyre::owo_colors::OwoColorize;
 use parameter_builder::ParameterBuilder;
 use tracing::info;
 
-mod parameter_builder;
+pub mod parameter_builder;
 
 pub struct AddParameterFlow {
     name: Option<String>,
@@ -34,8 +34,11 @@ impl AddParameterFlow {
 
     pub async fn start_flow(mut self) -> Result<()> {
         let response = self.network_service.get_remote_config().await?;
-        let future =
-            ParameterBuilder::start_flow(&response.data, self.name.take(), self.description.take());
+        let future = ParameterBuilder::start_flow(
+            self.name.take(),
+            self.description.take(),
+            &response.data.conditions,
+        );
         match future.await {
             Ok((name, parameter)) => self.add_parameter(name, parameter, response).await,
             Err(message) => Err(Error { message }),
@@ -60,8 +63,8 @@ impl AddParameterFlow {
                 return Ok(());
             }
         }
-        info!("New parameter will be added:");
-        println!("{}", format!("{name}: {:#}", parameter).green());
+        info!("{} parameter will be added:", &name);
+        println!("{}", format!("{:#}", parameter).green());
 
         if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
             return Ok(());

@@ -6,6 +6,7 @@ pub mod move_out_group;
 pub mod move_to_group_flow;
 mod network;
 mod remote_config;
+pub mod update_parameter_flow;
 
 use clap::{Args, Parser, Subcommand};
 

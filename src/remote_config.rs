@@ -41,7 +41,8 @@ enum TagColor {
 pub struct ParameterGroup {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub parameters: HashMap<String, Parameter>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<HashMap<String, Parameter>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -82,13 +83,12 @@ impl RemoteConfig {
         if self.parameters.contains_key(name) {
             Some(&mut self.parameters)
         } else if let Some(groups) = &mut self.parameter_groups {
-            groups.iter_mut().find_map(|(_, group)| {
-                if group.parameters.contains_key(name) {
-                    Some(&mut group.parameters)
-                } else {
-                    None
-                }
-            })
+            groups
+                .iter_mut()
+                .find_map(|(_, group)| match group.parameters.as_mut() {
+                    Some(params) if params.contains_key(name) => Some(params),
+                    _ => None,
+                })
         } else {
             None
         }

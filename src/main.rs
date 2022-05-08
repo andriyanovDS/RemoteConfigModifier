@@ -2,6 +2,7 @@ use clap::Parser;
 use color_eyre::Report;
 use remote_config_modifier::add_parameter_flow::AddParameterFlow;
 use remote_config_modifier::delete_parameter_flow::DeleteParameterFlow;
+use remote_config_modifier::move_to_group_flow::MoveToGroupFlow;
 use remote_config_modifier::{Cli, Command};
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::fmt;
@@ -23,6 +24,10 @@ async fn main() -> Result<(), Report> {
             let delete_parameter_flow = DeleteParameterFlow::new(&name);
             delete_parameter_flow.start_flow().await;
         }
+        Command::MoveTo(arguments) => {
+            MoveToGroupFlow::new(arguments).start_flow().await;
+        }
+        Command::MoveOut { parameter_name: _ } => {}
     }
     Ok(())
 }

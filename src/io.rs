@@ -18,8 +18,11 @@ impl InputReader {
         Self::wait_for_input().await
     }
 
-    pub async fn ask_confirmation(confirmation_msg: &str) -> Result<bool> {
-        let answer = Self::request_user_input::<InputString, str>(confirmation_msg).await?;
+    pub async fn ask_confirmation<M>(confirmation_msg: &M) -> Result<bool>
+    where
+        M: Display + ?Sized,
+    {
+        let answer = Self::request_user_input::<InputString, M>(confirmation_msg).await?;
         match answer.0.to_lowercase().as_ref() {
             "y" | "yes" => Ok(true),
             "n" | "no" => Ok(false),
@@ -29,11 +32,16 @@ impl InputReader {
 
     pub async fn request_select_item_in_list<'a>(
         list: impl Iterator<Item = &'a str>,
+        custom_option: Option<&str>,
     ) -> Result<Option<usize>> {
         let mut count: usize = 1;
         for (index, item) in list.enumerate() {
             count += 1;
             println!("{}) {}", index + 1, item);
+        }
+        if let Some(option) = custom_option {
+            println!("{}) {}", count, option);
+            count += 1;
         }
         println!("{}) Return back", count);
         println!();

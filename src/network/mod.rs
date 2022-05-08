@@ -6,6 +6,7 @@ use reqwest::{
 };
 use spinners::{Spinner, Spinners};
 use std::future::Future;
+use tracing::debug;
 
 mod authenticator;
 
@@ -60,6 +61,7 @@ impl NetworkService {
                     .to_string();
                 let bytes = response.bytes().await?;
                 let remote_config = serde_json::from_slice::<RemoteConfig>(&bytes)?;
+                debug!("Received remote config: {:?}", &remote_config);
                 Ok(ResponseWithEtag {
                     etag,
                     data: remote_config,
@@ -74,6 +76,7 @@ impl NetworkService {
         config: RemoteConfig,
         etag: String,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        debug!("Remote config to upload: {:#?}", &config);
         NetworkService::perform_with_spinner(
             "Uploading remote config...",
             "Uploading completed successfully",

@@ -180,7 +180,7 @@ impl<'a> ParameterBuilder<'a> {
             .conditions
             .iter()
             .map(|cond| cond.name.as_str());
-        InputReader::request_select_item_in_list(condition_names).await
+        InputReader::request_select_item_in_list(condition_names, None).await
     }
 
     async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> BuilderResult<'a>

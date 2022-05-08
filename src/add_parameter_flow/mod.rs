@@ -4,7 +4,7 @@ use crate::network::{NetworkService, ResponseWithEtag};
 use crate::remote_config::{Parameter, RemoteConfig};
 use color_eyre::owo_colors::OwoColorize;
 use parameter_builder::ParameterBuilder;
-use tracing::{error, info};
+use tracing::info;
 
 mod parameter_builder;
 
@@ -32,28 +32,13 @@ impl AddParameterFlow {
         }
     }
 
-    pub async fn start_flow(mut self) {
-        match self
-            .network_service
-            .get_remote_config()
-            .await
-            .map_err(Error::from)
-        {
-            Ok(response) => {
-                let future = ParameterBuilder::start_flow(
-                    &response.data,
-                    self.name.take(),
-                    self.description.take(),
-                );
-                let result = match future.await {
-                    Ok((name, parameter)) => self.add_parameter(name, parameter, response).await,
-                    Err(message) => Err(Error { message }),
-                };
-                if let Err(error) = result {
-                    error!("{}", error.message.red());
-                }
-            }
-            Err(error) => error!("{}", error.message.red()),
+    pub async fn start_flow(mut self) -> Result<()> {
+        let response = self.network_service.get_remote_config().await?;
+        let future =
+            ParameterBuilder::start_flow(&response.data, self.name.take(), self.description.take());
+        match future.await {
+            Ok((name, parameter)) => self.add_parameter(name, parameter, response).await,
+            Err(message) => Err(Error { message }),
         }
     }
 

@@ -7,7 +7,7 @@ use color_eyre::owo_colors::OwoColorize;
 use colored::{ColoredString, Colorize};
 use std::collections::HashMap;
 use std::mem;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 pub struct MoveToGroupFlow {
     parameter_name: String,
@@ -24,13 +24,7 @@ impl MoveToGroupFlow {
         }
     }
 
-    pub async fn start_flow(mut self) {
-        if let Err(error) = self.move_parameter().await {
-            error!("{}", error.message.red());
-        }
-    }
-
-    async fn move_parameter(&mut self) -> Result<()> {
+    pub async fn start_flow(mut self) -> Result<()> {
         let mut response = self.network_service.get_remote_config().await?;
         let config = &mut response.data;
         let map_with_parameter = config.get_map_for_existing_parameter(&self.parameter_name);

@@ -2,6 +2,7 @@ pub mod add_parameter_flow;
 pub mod delete_parameter_flow;
 mod error;
 mod io;
+pub mod move_out_group;
 pub mod move_to_group_flow;
 mod network;
 mod remote_config;
@@ -27,14 +28,16 @@ pub enum Command {
     /// Move parameter to group
     MoveTo(MoveTo),
     /// Move parameter out the group
-    MoveOut { parameter_name: String },
+    MoveOut(MoveOut),
 }
 
 #[derive(Debug, Args)]
 pub struct Add {
     #[clap(short, long)]
+    /// Parameter's name
     pub name: Option<String>,
     #[clap(short, long)]
+    /// Parameter's description (Optional)
     pub description: Option<String>,
 }
 
@@ -44,4 +47,10 @@ pub struct MoveTo {
     pub parameter: String,
     #[clap(short, long)]
     pub group: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct MoveOut {
+    #[clap(short, long)]
+    pub parameter: String,
 }

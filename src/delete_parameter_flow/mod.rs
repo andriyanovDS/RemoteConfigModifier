@@ -2,7 +2,7 @@ use crate::error::Result;
 use crate::io::InputReader;
 use crate::network::NetworkService;
 use colored::Colorize;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 pub struct DeleteParameterFlow<'a> {
     name: &'a str,
@@ -17,13 +17,7 @@ impl<'a> DeleteParameterFlow<'a> {
         }
     }
 
-    pub async fn start_flow(mut self) {
-        if let Err(error) = self.delete_parameter().await {
-            error!("{}", error.message.red());
-        }
-    }
-
-    async fn delete_parameter(&mut self) -> Result<()> {
+    pub async fn start_flow(mut self) -> Result<()> {
         let mut response = self.network_service.get_remote_config().await?;
         let remote_config = &mut response.data;
         let map_with_parameter = remote_config.get_map_for_existing_parameter(self.name);

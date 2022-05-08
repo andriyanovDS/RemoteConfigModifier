@@ -27,8 +27,8 @@ async fn main() -> Result<(), Report> {
             delete_parameter_flow.start_flow().await
         }
         Command::MoveTo(arguments) => MoveToGroupFlow::new(arguments).start_flow().await,
-        Command::MoveOut(arguments) => {
-            MoveOutGroupFlow::new(arguments.parameter)
+        Command::MoveOut { parameter } => {
+            MoveOutGroupFlow::new(parameter)
                 .start_flow()
                 .await
         }

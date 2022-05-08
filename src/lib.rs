@@ -28,16 +28,14 @@ pub enum Command {
     /// Move parameter to group
     MoveTo(MoveTo),
     /// Move parameter out the group
-    MoveOut(MoveOut),
+    MoveOut { parameter: String },
 }
 
 #[derive(Debug, Args)]
 pub struct Add {
     #[clap(short, long)]
-    /// Parameter's name
     pub name: Option<String>,
     #[clap(short, long)]
-    /// Parameter's description (Optional)
     pub description: Option<String>,
 }
 
@@ -47,10 +45,4 @@ pub struct MoveTo {
     pub parameter: String,
     #[clap(short, long)]
     pub group: Option<String>,
-}
-
-#[derive(Debug, Args)]
-pub struct MoveOut {
-    #[clap(short, long)]
-    pub parameter: String,
 }

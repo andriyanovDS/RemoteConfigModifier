@@ -135,9 +135,7 @@ impl<'a> ParameterBuilder<'a> {
                     "{}",
                     "Do you want to add additional conditional value? [Y,n]".green()
                 );
-                while let Some(selected_index) =
-                    builder.request_select_condition(&message).await?
-                {
+                while let Some(selected_index) = builder.request_select_condition(&message).await? {
                     builder = builder.request_value_for_condition(selected_index).await?;
                 }
                 Ok(builder)
@@ -171,10 +169,7 @@ impl<'a> ParameterBuilder<'a> {
         })
     }
 
-    async fn request_select_condition(
-        &self,
-        message: &str,
-    ) -> crate::error::Result<Option<usize>> {
+    async fn request_select_condition(&self, message: &str) -> crate::error::Result<Option<usize>> {
         if !InputReader::ask_confirmation(message).await? {
             return Ok(None);
         }

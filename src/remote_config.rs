@@ -74,6 +74,27 @@ pub enum ParameterValue {
     UseInAppDefault(bool),
 }
 
+impl RemoteConfig {
+    pub fn get_map_for_existing_parameter(
+        &mut self,
+        name: &str,
+    ) -> Option<&mut HashMap<String, Parameter>> {
+        if self.parameters.contains_key(name) {
+            Some(&mut self.parameters)
+        } else if let Some(groups) = &mut self.parameter_groups {
+            groups.iter_mut().find_map(|(_, group)| {
+                if group.parameters.contains_key(name) {
+                    Some(&mut group.parameters)
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        }
+    }
+}
+
 impl Display for Condition {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let entries = [
@@ -120,7 +141,7 @@ impl Debug for ParameterValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             ParameterValue::Value(value) => write!(f, "{value}"),
-            ParameterValue::UseInAppDefault(use_default) => write!(f, "{use_default}")
+            ParameterValue::UseInAppDefault(use_default) => write!(f, "{use_default}"),
         }
     }
 }

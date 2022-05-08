@@ -64,7 +64,8 @@ impl AddParameterFlow {
         mut response: ResponseWithEtag<RemoteConfig>,
     ) -> Result<()> {
         let remote_config = &mut response.data;
-        if remote_config.parameters.contains_key(&name) {
+        let map_with_parameter = remote_config.get_map_for_existing_parameter(&name);
+        if map_with_parameter.is_some() {
             let message = format!(
                 "Parameter with name {} already exists! Do you want te replace it? [Y,n]",
                 name
@@ -80,7 +81,14 @@ impl AddParameterFlow {
         if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
             return Ok(());
         }
-        remote_config.parameters.insert(name, parameter);
+        match map_with_parameter {
+            Some(map) => {
+                map.insert(name, parameter);
+            }
+            None => {
+                remote_config.parameters.insert(name, parameter);
+            }
+        }
         self.network_service
             .update_remote_config(response.data, response.etag)
             .await?;

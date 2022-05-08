@@ -26,13 +26,14 @@ impl<'a> DeleteParameterFlow<'a> {
     async fn delete_parameter(&mut self) -> Result<()> {
         let mut response = self.network_service.get_remote_config().await?;
         let remote_config = &mut response.data;
-        let parameter = remote_config.parameters.remove(self.name);
-        if parameter.is_none() {
+        let map_with_parameter = remote_config.get_map_for_existing_parameter(self.name);
+
+        if map_with_parameter.is_none() {
             let message = format!("Parameter with name {} does not exists!", &self.name);
             warn!("{}", message.yellow());
             return Ok(());
         }
-        let parameter = parameter.unwrap();
+        let parameter = map_with_parameter.unwrap().remove(self.name).unwrap();
         let message = format!("{} parameter will be removed", &self.name);
         warn!("{}", message.yellow());
         warn!("{:#}", &parameter);

@@ -15,14 +15,12 @@ async fn main() -> Result<(), Report> {
 
     let result = match cli.command {
         Command::Add(arguments) => {
-            let add_parameter_flow = AddCommand::new(arguments.name, arguments.description);
-            add_parameter_flow.start_flow().await
+            AddCommand::new(arguments.name, arguments.description)
+                .start_flow()
+                .await
         }
         Command::Update { name } => UpdateCommand::new(name).start_flow().await,
-        Command::Delete { name } => {
-            let delete_parameter_flow = DeleteCommand::new(&name);
-            delete_parameter_flow.start_flow().await
-        }
+        Command::Delete { name } => DeleteCommand::new(&name).start_flow().await,
         Command::MoveTo(arguments) => MoveToCommand::new(arguments).start_flow().await,
         Command::MoveOut { parameter } => MoveOutCommand::new(parameter).start_flow().await,
         Command::Show => ShowCommand::new().start_flow().await,

@@ -22,7 +22,7 @@ pub enum Command {
     /// Updates existing parameter to config
     Update { name: String },
     /// Deletes parameter from config
-    Delete { name: String },
+    Delete(Delete),
     /// Move parameter to group
     MoveTo(MoveTo),
     /// Move parameter out the group
@@ -45,6 +45,14 @@ pub struct MoveTo {
     pub parameter: String,
     #[clap(short, long)]
     pub group: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct Delete {
+    #[clap(short, long)]
+    pub name: String,
+    #[clap(flatten)]
+    pub project: Project,
 }
 
 #[derive(Debug, Args)]

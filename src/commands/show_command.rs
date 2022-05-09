@@ -4,11 +4,13 @@ use crate::network::NetworkService;
 use crate::projects::Project;
 use crate::remote_config::RemoteConfig;
 use async_trait::async_trait;
+use color_eyre::owo_colors::OwoColorize;
 use term_table::{
     row::Row,
     table_cell::{Alignment, TableCell},
     Table, TableStyle,
 };
+use tracing::{error, info};
 
 pub struct ShowCommand {
     network_service: NetworkService,
@@ -71,6 +73,7 @@ impl ShowCommand {
 #[async_trait]
 impl Command for ShowCommand {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
+        info!("Running for {} project", &project.name);
         let mut response = self.network_service.get_remote_config(&project).await?;
         let table = ShowCommand::build_table(&mut response.data, &project.name);
         println!("{}", table.render());
@@ -79,9 +82,16 @@ impl Command for ShowCommand {
 
     async fn run_for_multiple_projects(mut self, projects: &[Project]) -> Result<()> {
         for project in projects {
-            let mut response = self.network_service.get_remote_config(&project).await?;
-            let table = ShowCommand::build_table(&mut response.data, &project.name);
-            println!("{}", table.render());
+            info!("Running for {} project", &project.name);
+            match self.network_service.get_remote_config(&project).await {
+                Err(error) => {
+                    error!("{}", error.to_string().red());
+                }
+                Ok(mut response) => {
+                    let table = ShowCommand::build_table(&mut response.data, &project.name);
+                    println!("{}", table.render());
+                }
+            }
         }
         Ok(())
     }

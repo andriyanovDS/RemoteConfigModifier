@@ -16,7 +16,11 @@ async fn main() -> Result<(), Report> {
     let result = match cli.command {
         Command::Add(arguments) => AddCommand::new(arguments).start_flow().await,
         Command::Update { name } => UpdateCommand::new(name).start_flow().await,
-        Command::Delete { name } => DeleteCommand::new(&name).start_flow().await,
+        Command::Delete(arguments) => {
+            CommandRunner::new(DeleteCommand::new(arguments.name))
+                .run(arguments.project)
+                .await
+        }
         Command::MoveTo(arguments) => MoveToCommand::new(arguments).start_flow().await,
         Command::MoveOut { parameter } => MoveOutCommand::new(parameter).start_flow().await,
         Command::Show(arguments) => CommandRunner::new(ShowCommand::new()).run(arguments).await,

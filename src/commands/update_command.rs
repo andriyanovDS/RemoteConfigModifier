@@ -3,6 +3,7 @@ use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::NetworkService;
 use crate::remote_config::{Parameter, RemoteConfig};
+use crate::projects::Project;
 use color_eyre::owo_colors::OwoColorize;
 use std::collections::HashMap;
 use tracing::warn;
@@ -21,7 +22,8 @@ impl UpdateCommand {
     }
 
     pub async fn start_flow(mut self) -> Result<()> {
-        let mut response = self.network_service.get_remote_config().await?;
+        let project = Project::stub();
+        let mut response = self.network_service.get_remote_config(&project).await?;
         let config = &mut response.data;
         let source_with_param = config.find_parameter_source(&self.name);
         let (name, parameter) = match source_with_param.as_ref() {
@@ -61,7 +63,7 @@ impl UpdateCommand {
         let params = config.find_source_params(&source);
         params.insert(name, parameter);
         self.network_service
-            .update_remote_config(response.data, response.etag)
+            .update_remote_config(&project, response.data, response.etag)
             .await?;
         Ok(())
     }

@@ -2,6 +2,7 @@ use crate::error::Result;
 use crate::io::{InputReader, InputString};
 use crate::network::NetworkService;
 use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
+use crate::projects::Project;
 use crate::MoveTo;
 use color_eyre::owo_colors::OwoColorize;
 use colored::{ColoredString, Colorize};
@@ -25,7 +26,8 @@ impl MoveToCommand {
     }
 
     pub async fn start_flow(mut self) -> Result<()> {
-        let mut response = self.network_service.get_remote_config().await?;
+        let project = Project::stub();
+        let mut response = self.network_service.get_remote_config(&project).await?;
         let config = &mut response.data;
         let map_with_parameter = config.get_map_for_existing_parameter(&self.parameter_name);
 
@@ -48,7 +50,7 @@ impl MoveToCommand {
         }?;
         if result.is_some() {
             self.network_service
-                .update_remote_config(response.data, response.etag)
+                .update_remote_config(&project, response.data, response.etag)
                 .await?;
         }
         Ok(())

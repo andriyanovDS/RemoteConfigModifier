@@ -3,6 +3,7 @@ use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
 use crate::remote_config::{Parameter, RemoteConfig};
 use crate::Add;
+use crate::projects::Project;
 use color_eyre::owo_colors::OwoColorize;
 use parameter_builder::ParameterBuilder;
 
@@ -33,14 +34,15 @@ impl AddCommand {
     }
 
     pub async fn start_flow(mut self) -> Result<()> {
-        let response = self.network_service.get_remote_config().await?;
+        let project = Project::stub();
+        let response = self.network_service.get_remote_config(&project).await?;
         let future = ParameterBuilder::start_flow(
             self.name.take(),
             self.description.take(),
             &response.data.conditions,
         );
         match future.await {
-            Ok((name, parameter)) => self.add_parameter(name, parameter, response).await,
+            Ok((name, parameter)) => self.add_parameter(name, parameter, response, &project).await,
             Err(message) => Err(Error { message }),
         }
     }
@@ -50,6 +52,7 @@ impl AddCommand {
         name: String,
         parameter: Parameter,
         mut response: ResponseWithEtag<RemoteConfig>,
+        project: &Project,
     ) -> Result<()> {
         let remote_config = &mut response.data;
         let map_with_parameter = remote_config.get_map_for_existing_parameter(&name);
@@ -77,7 +80,7 @@ impl AddCommand {
             }
         }
         self.network_service
-            .update_remote_config(response.data, response.etag)
+            .update_remote_config(&project, response.data, response.etag)
             .await?;
         Ok(())
     }

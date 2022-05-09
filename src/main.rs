@@ -12,14 +12,13 @@ use tracing_subscriber::fmt;
 async fn main() -> Result<(), Report> {
     setup()?;
     let cli = Cli::parse();
-
     let result = match cli.command {
         Command::Add(arguments) => AddCommand::new(arguments).start_flow().await,
         Command::Update { name } => UpdateCommand::new(name).start_flow().await,
         Command::Delete { name } => DeleteCommand::new(&name).start_flow().await,
         Command::MoveTo(arguments) => MoveToCommand::new(arguments).start_flow().await,
         Command::MoveOut { parameter } => MoveOutCommand::new(parameter).start_flow().await,
-        Command::Show => ShowCommand::new().start_flow().await,
+        Command::Show(project) => ShowCommand::new().start_flow().await,
     };
     if let Err(error) = result {
         error!("{}", error.message.red())

@@ -7,11 +7,9 @@ use reqwest::{
 use spinners::{Spinner, Spinners};
 use std::future::Future;
 use tracing::debug;
+use crate::projects::Project;
 
 mod authenticator;
-
-const REMOTE_CONFIG_URL: &str =
-    "https://firebaseremoteconfig.googleapis.com/v1/projects/774774183385/remoteConfig";
 
 pub struct NetworkService {
     client: Client,
@@ -39,6 +37,7 @@ impl NetworkService {
 
     pub async fn get_remote_config(
         &mut self,
+        project: &Project,
     ) -> Result<ResponseWithEtag<RemoteConfig>, Box<dyn std::error::Error + Send + Sync>> {
         NetworkService::perform_with_spinner(
             "Downloading remote config...",
@@ -47,7 +46,7 @@ impl NetworkService {
                 let access_token = self.authenticator.get_access_token().await?;
                 let response = self
                     .client
-                    .get(REMOTE_CONFIG_URL)
+                    .get(project.url())
                     .header(AUTHORIZATION, format!("Bearer {}", access_token.as_str()))
                     .header(ACCEPT_ENCODING, "gzip, deflate, br")
                     .send()
@@ -73,6 +72,7 @@ impl NetworkService {
 
     pub async fn update_remote_config(
         &mut self,
+        project: &Project,
         config: RemoteConfig,
         etag: String,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -84,7 +84,7 @@ impl NetworkService {
                 let access_token = self.authenticator.get_access_token().await?;
                 let bytes = serde_json::to_string(&config)?.into_bytes();
                 self.client
-                    .put(REMOTE_CONFIG_URL)
+                    .put(project.url())
                     .header(AUTHORIZATION, format!("Bearer {}", access_token.as_str()))
                     .header(ACCEPT_ENCODING, "gzip, deflate, br")
                     .header(IF_MATCH, etag)

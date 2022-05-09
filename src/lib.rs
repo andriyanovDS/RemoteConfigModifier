@@ -2,6 +2,7 @@ pub mod commands;
 mod error;
 mod io;
 mod network;
+mod projects;
 mod remote_config;
 
 use clap::{Args, Parser, Subcommand};
@@ -26,8 +27,8 @@ pub enum Command {
     MoveTo(MoveTo),
     /// Move parameter out the group
     MoveOut { parameter: String },
-    /// Show config parameters and conditions
-    Show,
+    /// Show parameters and conditions
+    Show(Project),
 }
 
 #[derive(Debug, Args)]
@@ -44,4 +45,11 @@ pub struct MoveTo {
     pub parameter: String,
     #[clap(short, long)]
     pub group: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct Project {
+    #[clap(short, long)]
+    pub project: Option<String>,
+    pub main_project: Option<String>,
 }

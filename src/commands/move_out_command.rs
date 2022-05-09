@@ -1,5 +1,6 @@
 use crate::error::Result;
 use crate::network::NetworkService;
+use crate::projects::Project;
 use color_eyre::owo_colors::OwoColorize;
 use tracing::{info, warn};
 
@@ -17,7 +18,8 @@ impl MoveOutCommand {
     }
 
     pub async fn start_flow(mut self) -> Result<()> {
-        let mut response = self.network_service.get_remote_config().await?;
+        let project = Project::stub();
+        let mut response = self.network_service.get_remote_config(&project).await?;
         let remote_config = &mut response.data;
 
         if remote_config.parameter_groups.is_empty() {
@@ -52,7 +54,7 @@ impl MoveOutCommand {
             .parameters
             .insert(std::mem::take(&mut self.parameter_name), parameter);
         self.network_service
-            .update_remote_config(response.data, response.etag)
+            .update_remote_config(&project, response.data, response.etag)
             .await?;
         Ok(())
     }

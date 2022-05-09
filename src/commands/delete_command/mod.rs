@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::io::InputReader;
 use crate::network::NetworkService;
+use crate::projects::Project;
 use colored::Colorize;
 use tracing::{info, warn};
 
@@ -18,7 +19,8 @@ impl<'a> DeleteCommand<'a> {
     }
 
     pub async fn start_flow(mut self) -> Result<()> {
-        let mut response = self.network_service.get_remote_config().await?;
+        let project = Project::stub();
+        let mut response = self.network_service.get_remote_config(&project).await?;
         let remote_config = &mut response.data;
         let map_with_parameter = remote_config.get_map_for_existing_parameter(self.name);
 
@@ -36,7 +38,7 @@ impl<'a> DeleteCommand<'a> {
             return Ok(());
         }
         self.network_service
-            .update_remote_config(response.data, response.etag)
+            .update_remote_config(&project, response.data, response.etag)
             .await?;
         Ok(())
     }

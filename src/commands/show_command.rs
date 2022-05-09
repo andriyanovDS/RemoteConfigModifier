@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::network::NetworkService;
 use crate::remote_config::RemoteConfig;
+use crate::projects::Project;
 use term_table::{
     row::Row,
     table_cell::{Alignment, TableCell},
@@ -19,7 +20,8 @@ impl ShowCommand {
     }
 
     pub async fn start_flow(mut self) -> Result<()> {
-        let mut response = self.network_service.get_remote_config().await?;
+        let project = Project::stub();
+        let mut response = self.network_service.get_remote_config(&project).await?;
         let table = ShowCommand::build_table(&mut response.data);
         println!("{}", table.render());
         Ok(())

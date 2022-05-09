@@ -14,11 +14,7 @@ async fn main() -> Result<(), Report> {
     let cli = Cli::parse();
 
     let result = match cli.command {
-        Command::Add(arguments) => {
-            AddCommand::new(arguments.name, arguments.description)
-                .start_flow()
-                .await
-        }
+        Command::Add(arguments) => AddCommand::new(arguments).start_flow().await,
         Command::Update { name } => UpdateCommand::new(name).start_flow().await,
         Command::Delete { name } => DeleteCommand::new(&name).start_flow().await,
         Command::MoveTo(arguments) => MoveToCommand::new(arguments).start_flow().await,

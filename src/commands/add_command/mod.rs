@@ -2,6 +2,7 @@ use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
 use crate::remote_config::{Parameter, RemoteConfig};
+use crate::Add;
 use color_eyre::owo_colors::OwoColorize;
 use parameter_builder::ParameterBuilder;
 
@@ -23,10 +24,10 @@ impl Default for AddCommand {
 }
 
 impl AddCommand {
-    pub fn new(name: Option<String>, description: Option<String>) -> Self {
+    pub fn new(arguments: Add) -> Self {
         Self {
-            name,
-            description,
+            name: arguments.name,
+            description: arguments.description,
             network_service: NetworkService::new(),
         }
     }

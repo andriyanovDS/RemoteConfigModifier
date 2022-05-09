@@ -1,8 +1,10 @@
+use crate::commands::command::Command;
 use crate::error::Result;
 use crate::network::NetworkService;
 use crate::projects::Project;
+use async_trait::async_trait;
 use color_eyre::owo_colors::OwoColorize;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 pub struct MoveOutCommand {
     parameter_name: String,
@@ -17,8 +19,8 @@ impl MoveOutCommand {
         }
     }
 
-    pub async fn start_flow(mut self) -> Result<()> {
-        let project = Project::stub();
+    async fn run(&mut self, project: &Project) -> Result<()> {
+        info!("Running for {} project", &project.name);
         let mut response = self.network_service.get_remote_config(&project).await?;
         let remote_config = &mut response.data;
 
@@ -56,6 +58,22 @@ impl MoveOutCommand {
         self.network_service
             .update_remote_config(&project, response.data, response.etag)
             .await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for MoveOutCommand {
+    async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
+        self.run(project).await
+    }
+
+    async fn run_for_multiple_projects(mut self, projects: &[Project]) -> Result<()> {
+        for project in projects {
+            if let Err(error) = self.run(project).await {
+                error!("{}", error.message.red());
+            }
+        }
         Ok(())
     }
 }

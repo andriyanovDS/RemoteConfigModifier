@@ -26,7 +26,7 @@ pub enum Command {
     /// Move parameter to group
     MoveTo(MoveTo),
     /// Move parameter out the group
-    MoveOut { parameter: String },
+    MoveOut(MoveOut),
     /// Show parameters and conditions
     Show(Project),
 }
@@ -37,6 +37,14 @@ pub struct Add {
     pub name: Option<String>,
     #[clap(short, long)]
     pub description: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct MoveOut {
+    #[clap(long)]
+    pub parameter: String,
+    #[clap(flatten)]
+    pub project: Project,
 }
 
 #[derive(Debug, Args)]

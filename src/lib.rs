@@ -41,10 +41,12 @@ pub struct Add {
 
 #[derive(Debug, Args)]
 pub struct MoveTo {
-    #[clap(short, long)]
+    #[clap(long)]
     pub parameter: String,
     #[clap(short, long)]
     pub group: Option<String>,
+    #[clap(flatten)]
+    pub project: Project,
 }
 
 #[derive(Debug, Args)]

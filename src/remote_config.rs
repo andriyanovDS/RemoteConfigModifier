@@ -7,6 +7,7 @@ use std::fmt::{Debug, Display, Formatter};
 pub struct RemoteConfig {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub conditions: Vec<Condition>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub parameters: HashMap<String, Parameter>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub parameter_groups: HashMap<String, ParameterGroup>,

@@ -21,7 +21,10 @@ async fn main() -> Result<(), Report> {
                 .run(arguments.project)
                 .await
         }
-        Command::MoveTo(arguments) => MoveToCommand::new(arguments).start_flow().await,
+        Command::MoveTo(arguments) => {
+            let command = MoveToCommand::new(arguments.parameter, arguments.group);
+            CommandRunner::new(command).run(arguments.project).await
+        }
         Command::MoveOut { parameter } => MoveOutCommand::new(parameter).start_flow().await,
         Command::Show(arguments) => CommandRunner::new(ShowCommand::new()).run(arguments).await,
     };

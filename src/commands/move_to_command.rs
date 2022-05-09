@@ -1,14 +1,14 @@
+use crate::commands::command::Command;
 use crate::error::Result;
 use crate::io::{InputReader, InputString};
 use crate::network::NetworkService;
 use crate::projects::Project;
 use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
-use crate::MoveTo;
+use async_trait::async_trait;
 use color_eyre::owo_colors::OwoColorize;
 use colored::{ColoredString, Colorize};
 use std::collections::HashMap;
-use std::mem;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 pub struct MoveToCommand {
     parameter_name: String,
@@ -17,16 +17,16 @@ pub struct MoveToCommand {
 }
 
 impl MoveToCommand {
-    pub fn new(arguments: MoveTo) -> Self {
+    pub fn new(parameter_name: String, group_name: Option<String>) -> Self {
         Self {
-            parameter_name: arguments.parameter,
-            group_name: arguments.group,
+            parameter_name,
+            group_name,
             network_service: NetworkService::new(),
         }
     }
 
-    pub async fn start_flow(mut self) -> Result<()> {
-        let project = Project::stub();
+    async fn run(&mut self, project: &Project) -> Result<()> {
+        info!("Running for {} project", &project.name);
         let mut response = self.network_service.get_remote_config(&project).await?;
         let config = &mut response.data;
         let map_with_parameter = config.get_map_for_existing_parameter(&self.parameter_name);
@@ -44,9 +44,12 @@ impl MoveToCommand {
             .remove(&self.parameter_name)
             .unwrap();
 
-        let result = match self.group_name.take() {
+        let result = match self.group_name.as_ref() {
             None => self.unknown_group_flow(config, parameter).await,
-            Some(name) => self.known_group_flow(config, name, parameter).await,
+            Some(name) => {
+                let name = name.clone();
+                self.known_group_flow(config, name, parameter).await
+            }
         }?;
         if result.is_some() {
             self.network_service
@@ -85,7 +88,7 @@ impl MoveToCommand {
         let group = parameters.next().unwrap();
         group
             .parameters
-            .insert(mem::take(&mut self.parameter_name), parameter);
+            .insert(self.parameter_name.clone(), parameter);
 
         Ok(Some(()))
     }
@@ -102,7 +105,7 @@ impl MoveToCommand {
         );
 
         let mut parameters = HashMap::new();
-        parameters.insert(mem::take(&mut self.parameter_name), parameter);
+        parameters.insert(self.parameter_name.clone(), parameter);
         config.parameter_groups.insert(
             name,
             ParameterGroup {
@@ -145,7 +148,7 @@ impl MoveToCommand {
                     None
                 }
             });
-        let parameter_name = mem::take(&mut self.parameter_name);
+        let parameter_name = self.parameter_name.clone();
         match group {
             None => {
                 let message = format!(
@@ -171,5 +174,21 @@ impl MoveToCommand {
             }
         }
         Ok(Some(()))
+    }
+}
+
+#[async_trait]
+impl Command for MoveToCommand {
+    async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
+        self.run(project).await
+    }
+
+    async fn run_for_multiple_projects(mut self, projects: &[Project]) -> Result<()> {
+        for project in projects {
+            if let Err(error) = self.run(project).await {
+                error!("{}", error.message.red());
+            }
+        }
+        Ok(())
     }
 }

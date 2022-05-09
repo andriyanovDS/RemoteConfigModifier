@@ -3,12 +3,12 @@ use crate::network::NetworkService;
 use color_eyre::owo_colors::OwoColorize;
 use tracing::{info, warn};
 
-pub struct MoveOutGroupFlow {
+pub struct MoveOutCommand {
     parameter_name: String,
     network_service: NetworkService,
 }
 
-impl MoveOutGroupFlow {
+impl MoveOutCommand {
     pub fn new(parameter_name: String) -> Self {
         Self {
             parameter_name,

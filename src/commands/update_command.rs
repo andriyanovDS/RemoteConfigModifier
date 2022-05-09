@@ -1,4 +1,4 @@
-use crate::add_parameter_flow::parameter_builder::ParameterBuilder;
+use super::add_command::parameter_builder::ParameterBuilder;
 use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::NetworkService;
@@ -7,12 +7,12 @@ use color_eyre::owo_colors::OwoColorize;
 use std::collections::HashMap;
 use tracing::warn;
 
-pub struct UpdateParameterFlow {
+pub struct UpdateCommand {
     name: String,
     network_service: NetworkService,
 }
 
-impl UpdateParameterFlow {
+impl UpdateCommand {
     pub fn new(name: String) -> Self {
         Self {
             name,

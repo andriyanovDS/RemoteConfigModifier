@@ -7,11 +7,11 @@ use term_table::{
     Table, TableStyle,
 };
 
-pub struct ShowConfigFlow {
+pub struct ShowCommand {
     network_service: NetworkService,
 }
 
-impl ShowConfigFlow {
+impl ShowCommand {
     pub fn new() -> Self {
         Self {
             network_service: NetworkService::new(),
@@ -20,7 +20,7 @@ impl ShowConfigFlow {
 
     pub async fn start_flow(mut self) -> Result<()> {
         let mut response = self.network_service.get_remote_config().await?;
-        let table = ShowConfigFlow::build_table(&mut response.data);
+        let table = ShowCommand::build_table(&mut response.data);
         println!("{}", table.render());
         Ok(())
     }
@@ -30,7 +30,7 @@ impl ShowConfigFlow {
         table.max_column_width = 40;
         table.style = TableStyle::simple();
 
-        table.add_row(ShowConfigFlow::make_title_row("Parameters"));
+        table.add_row(ShowCommand::make_title_row("Parameters"));
         config
             .parameters
             .iter()
@@ -52,7 +52,7 @@ impl ShowConfigFlow {
             .for_each(|row| table.add_row(row));
 
         if !config.conditions.is_empty() {
-            table.add_row(ShowConfigFlow::make_title_row("Conditions"));
+            table.add_row(ShowCommand::make_title_row("Conditions"));
             config
                 .conditions
                 .iter_mut()

@@ -4,12 +4,12 @@ use crate::network::NetworkService;
 use colored::Colorize;
 use tracing::{info, warn};
 
-pub struct DeleteParameterFlow<'a> {
+pub struct DeleteCommand<'a> {
     name: &'a str,
     network_service: NetworkService,
 }
 
-impl<'a> DeleteParameterFlow<'a> {
+impl<'a> DeleteCommand<'a> {
     pub fn new(name: &'a str) -> Self {
         Self {
             name,

@@ -9,13 +9,13 @@ use std::collections::HashMap;
 use std::mem;
 use tracing::{info, warn};
 
-pub struct MoveToGroupFlow {
+pub struct MoveToCommand {
     parameter_name: String,
     group_name: Option<String>,
     network_service: NetworkService,
 }
 
-impl MoveToGroupFlow {
+impl MoveToCommand {
     pub fn new(arguments: MoveTo) -> Self {
         Self {
             parameter_name: arguments.parameter,
@@ -93,7 +93,7 @@ impl MoveToGroupFlow {
         config: &mut RemoteConfig,
         parameter: Parameter,
     ) -> Result<()> {
-        let (name, description) = MoveToGroupFlow::create_new_group_name().await?;
+        let (name, description) = MoveToCommand::create_new_group_name().await?;
         info!(
             "Parameter {} will be moved to {} group",
             self.parameter_name, &name

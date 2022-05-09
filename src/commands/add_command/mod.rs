@@ -7,12 +7,12 @@ use parameter_builder::ParameterBuilder;
 
 pub mod parameter_builder;
 
-pub struct AddParameterFlow {
+pub struct AddCommand {
     name: Option<String>,
     description: Option<String>,
     network_service: NetworkService,
 }
-impl Default for AddParameterFlow {
+impl Default for AddCommand {
     fn default() -> Self {
         Self {
             name: None,
@@ -22,7 +22,7 @@ impl Default for AddParameterFlow {
     }
 }
 
-impl AddParameterFlow {
+impl AddCommand {
     pub fn new(name: Option<String>, description: Option<String>) -> Self {
         Self {
             name,

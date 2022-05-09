@@ -5,7 +5,7 @@ use crate::network::NetworkService;
 use crate::remote_config::{Parameter, RemoteConfig};
 use color_eyre::owo_colors::OwoColorize;
 use std::collections::HashMap;
-use tracing::{info, warn};
+use tracing::warn;
 
 pub struct UpdateParameterFlow {
     name: String,
@@ -30,11 +30,14 @@ impl UpdateParameterFlow {
                 warn!("{}", message.yellow());
                 return Ok(());
             }
-            Some((_, parameter)) => {
-                info!("{} parameter found", &self.name);
-                info!("{:#}", &parameter);
+            Some((source, parameter)) => {
                 println!();
-
+                match source {
+                    ParameterSource::Root => parameter.preview(&self.name, "Parameter found", None),
+                    ParameterSource::Group(name) => {
+                        parameter.preview(&self.name, "Parameter found", Some(&name))
+                    }
+                }
                 let name = std::mem::take(&mut self.name);
                 let description = parameter.description.clone();
                 ParameterBuilder::start_flow(Some(name), description, &config.conditions)
@@ -42,14 +45,19 @@ impl UpdateParameterFlow {
                     .map_err(|message| Error { message })?
             }
         };
-        info!("{} parameter will be updated to:", &name);
-        println!("{}", format!("{:#}", parameter).green());
+
+        let source = source_with_param.unwrap().0;
+        match &source {
+            ParameterSource::Root => parameter.preview(&name, "Parameter will be updated", None),
+            ParameterSource::Group(group_name) => {
+                parameter.preview(&name, "Parameter will be updated", Some(group_name))
+            }
+        }
 
         if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
             return Ok(());
         }
 
-        let source = source_with_param.unwrap().0;
         let params = config.find_source_params(&source);
         params.insert(name, parameter);
         self.network_service
@@ -63,12 +71,12 @@ impl RemoteConfig {
     fn find_parameter_source(&self, name: &str) -> Option<(ParameterSource, &Parameter)> {
         match (self.parameters.get(name), &self.parameter_groups) {
             (Some(param), _) => Some((ParameterSource::Root, param)),
-            (_, Some(groups)) => groups.iter().find_map(|(name, group)| {
+            (_, Some(groups)) => groups.iter().find_map(|(group_name, group)| {
                 group
                     .parameters
                     .as_ref()
                     .and_then(|params| params.get(name))
-                    .map(|parameter| (ParameterSource::Group(name.clone()), parameter))
+                    .map(|parameter| (ParameterSource::Group(group_name.clone()), parameter))
             }),
             _ => None,
         }

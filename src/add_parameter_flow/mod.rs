@@ -4,7 +4,6 @@ use crate::network::{NetworkService, ResponseWithEtag};
 use crate::remote_config::{Parameter, RemoteConfig};
 use color_eyre::owo_colors::OwoColorize;
 use parameter_builder::ParameterBuilder;
-use tracing::info;
 
 pub mod parameter_builder;
 
@@ -63,9 +62,8 @@ impl AddParameterFlow {
                 return Ok(());
             }
         }
-        info!("{} parameter will be added:", &name);
-        println!("{}", format!("{:#}", parameter).green());
 
+        parameter.preview(&name, "Parameter will be added", None);
         if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
             return Ok(());
         }

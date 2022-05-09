@@ -6,6 +6,7 @@ pub mod move_out_group;
 pub mod move_to_group_flow;
 mod network;
 mod remote_config;
+mod remote_config_table;
 pub mod show_config_flow;
 pub mod update_parameter_flow;
 

@@ -6,6 +6,7 @@ pub mod move_out_group;
 pub mod move_to_group_flow;
 mod network;
 mod remote_config;
+pub mod show_config_flow;
 pub mod update_parameter_flow;
 
 use clap::{Args, Parser, Subcommand};
@@ -30,6 +31,8 @@ pub enum Command {
     MoveTo(MoveTo),
     /// Move parameter out the group
     MoveOut { parameter: String },
+    /// Show config parameters and conditions
+    Show,
 }
 
 #[derive(Debug, Args)]

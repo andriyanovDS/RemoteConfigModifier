@@ -15,7 +15,7 @@ pub struct RemoteConfig {
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     pub name: String,
-    expression: String,
+    pub expression: String,
     tag_color: TagColor,
 }
 

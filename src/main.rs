@@ -4,6 +4,7 @@ use remote_config_modifier::add_parameter_flow::AddParameterFlow;
 use remote_config_modifier::delete_parameter_flow::DeleteParameterFlow;
 use remote_config_modifier::move_out_group::MoveOutGroupFlow;
 use remote_config_modifier::move_to_group_flow::MoveToGroupFlow;
+use remote_config_modifier::show_config_flow::ShowConfigFlow;
 use remote_config_modifier::update_parameter_flow::UpdateParameterFlow;
 use remote_config_modifier::{Cli, Command};
 use tracing::error;
@@ -27,6 +28,7 @@ async fn main() -> Result<(), Report> {
         }
         Command::MoveTo(arguments) => MoveToGroupFlow::new(arguments).start_flow().await,
         Command::MoveOut { parameter } => MoveOutGroupFlow::new(parameter).start_flow().await,
+        Command::Show => ShowConfigFlow::new().start_flow().await,
     };
     if let Err(error) = result {
         error!("{}", error.message.red())

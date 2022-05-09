@@ -69,16 +69,17 @@ impl UpdateParameterFlow {
 
 impl RemoteConfig {
     fn find_parameter_source(&self, name: &str) -> Option<(ParameterSource, &Parameter)> {
-        match (self.parameters.get(name), &self.parameter_groups) {
-            (Some(param), _) => Some((ParameterSource::Root, param)),
-            (_, Some(groups)) => groups.iter().find_map(|(group_name, group)| {
-                group
-                    .parameters
-                    .as_ref()
-                    .and_then(|params| params.get(name))
-                    .map(|parameter| (ParameterSource::Group(group_name.clone()), parameter))
-            }),
-            _ => None,
+        match self.parameters.get(name) {
+            Some(param) => Some((ParameterSource::Root, param)),
+            None => {
+                self.parameter_groups
+                    .iter()
+                    .find_map(|(group_name, group)| {
+                        group.parameters.get(name).map(|parameter| {
+                            (ParameterSource::Group(group_name.clone()), parameter)
+                        })
+                    })
+            }
         }
     }
 
@@ -87,12 +88,10 @@ impl RemoteConfig {
             ParameterSource::Root => &mut self.parameters,
             ParameterSource::Group(name) => self
                 .parameter_groups
-                .as_mut()
-                .unwrap()
                 .iter_mut()
                 .find_map(|(group_name, group)| {
                     if group_name == name {
-                        group.parameters.as_mut()
+                        Some(&mut group.parameters)
                     } else {
                         None
                     }

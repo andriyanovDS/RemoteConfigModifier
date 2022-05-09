@@ -2,7 +2,7 @@ pub mod add_parameter_flow;
 pub mod delete_parameter_flow;
 mod error;
 mod io;
-pub mod move_out_group;
+pub mod move_out_group_flow;
 pub mod move_to_group_flow;
 mod network;
 mod remote_config;

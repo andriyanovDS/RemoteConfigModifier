@@ -5,10 +5,11 @@ use std::fmt::{Debug, Display, Formatter};
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteConfig {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub conditions: Vec<Condition>,
     pub parameters: HashMap<String, Parameter>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameter_groups: Option<HashMap<String, ParameterGroup>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub parameter_groups: HashMap<String, ParameterGroup>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -41,8 +42,8 @@ enum TagColor {
 pub struct ParameterGroup {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<HashMap<String, Parameter>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub parameters: HashMap<String, Parameter>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -50,8 +51,8 @@ pub struct ParameterGroup {
 pub struct Parameter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_value: Option<ParameterValue>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub conditional_values: Option<HashMap<String, ParameterValue>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub conditional_values: HashMap<String, ParameterValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub value_type: ParameterValueType,
@@ -82,15 +83,14 @@ impl RemoteConfig {
     ) -> Option<&mut HashMap<String, Parameter>> {
         if self.parameters.contains_key(name) {
             Some(&mut self.parameters)
-        } else if let Some(groups) = &mut self.parameter_groups {
-            groups
-                .iter_mut()
-                .find_map(|(_, group)| match group.parameters.as_mut() {
-                    Some(params) if params.contains_key(name) => Some(params),
-                    _ => None,
-                })
         } else {
-            None
+            self.parameter_groups.iter_mut().find_map(|(_, group)| {
+                if group.parameters.contains_key(name) {
+                    Some(&mut group.parameters)
+                } else {
+                    None
+                }
+            })
         }
     }
 }
@@ -117,8 +117,12 @@ impl Display for Parameter {
         if let Some(value) = &self.description {
             write!(f, "  description: {value},{new_line}")?;
         }
-        if let Some(value) = &self.conditional_values {
-            write!(f, "  conditional_values: {value:#?},{new_line}")?;
+        if !self.conditional_values.is_empty() {
+            write!(
+                f,
+                "  conditional_values: {:#?},{new_line}",
+                self.conditional_values
+            )?;
         }
         write!(f, "}}")
     }
@@ -155,7 +159,7 @@ mod tests {
     fn serialization() {
         let parameter = Parameter {
             default_value: Some(ParameterValue::Value("false".to_string())),
-            conditional_values: None,
+            conditional_values: HashMap::new(),
             description: Some("some desc".to_string()),
             value_type: ParameterValueType::Boolean,
         };
@@ -169,7 +173,7 @@ mod tests {
         let remote_config = RemoteConfig {
             conditions: vec![condition],
             parameters,
-            parameter_groups: None,
+            parameter_groups: HashMap::new(),
         };
         let result = serde_json::to_string(&remote_config).unwrap();
         assert_eq!(result, "{\
@@ -225,7 +229,7 @@ mod tests {
                 default_value: Some(ParameterValue::Value(
                     "{\"iPhone13,2\":\"720x480\"}".to_string(),
                 )),
-                conditional_values: Some(conditional_values),
+                conditional_values,
                 description: Some("Maximum camera resolutions map for iOS devices".to_string()),
                 value_type: ParameterValueType::Json,
             };
@@ -236,7 +240,7 @@ mod tests {
         let expected_config = RemoteConfig {
             conditions: vec![],
             parameters,
-            parameter_groups: None,
+            parameter_groups: HashMap::new(),
         };
         assert_eq!(received_remote_config, expected_config)
     }

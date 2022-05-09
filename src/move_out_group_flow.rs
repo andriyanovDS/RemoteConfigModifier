@@ -20,31 +20,29 @@ impl MoveOutGroupFlow {
         let mut response = self.network_service.get_remote_config().await?;
         let remote_config = &mut response.data;
 
-        let (name, params) = match remote_config.parameter_groups.as_mut() {
-            None => {
-                warn!("{}", "Parameters group list is empty!".yellow());
-                return Ok(());
-            }
-            Some(groups) => {
-                let group = groups.iter_mut().find_map(|(name, group)| {
-                    group
-                        .parameters
-                        .as_mut()
-                        .filter(|params| params.contains_key(&self.parameter_name))
-                        .map(|params| (name, params))
-                });
-                if group.is_none() {
-                    let message = format!(
-                        "Parameter with name {} was not found in any group!",
-                        self.parameter_name
-                    );
-                    warn!("{}", message.yellow());
-                    return Ok(());
+        if remote_config.parameter_groups.is_empty() {
+            warn!("{}", "Parameters group list is empty!".yellow());
+            return Ok(());
+        }
+        let group = remote_config
+            .parameter_groups
+            .iter_mut()
+            .find_map(|(name, group)| {
+                if group.parameters.contains_key(&self.parameter_name) {
+                    Some((name, &mut group.parameters))
+                } else {
+                    None
                 }
-                group.unwrap()
-            }
-        };
-
+            });
+        if group.is_none() {
+            let message = format!(
+                "Parameter with name {} was not found in any group!",
+                self.parameter_name
+            );
+            warn!("{}", message.yellow());
+            return Ok(());
+        }
+        let (name, params) = group.unwrap();
         info!(
             "Will move parameter {} out of group {}",
             self.parameter_name, name

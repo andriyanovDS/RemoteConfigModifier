@@ -66,24 +66,10 @@ impl MoveToGroupFlow {
         );
         println!();
         let create_new_group_option = Some("Create new group");
-        let groups_count = config
-            .parameter_groups
-            .as_ref()
-            .map(|groups| groups.len())
-            .unwrap_or(0);
-        let index = match config.parameter_groups.as_ref() {
-            Some(groups) => {
-                let keys = groups.keys().map(|name| name.as_str());
-                InputReader::request_select_item_in_list(keys, create_new_group_option).await
-            }
-            None => {
-                InputReader::request_select_item_in_list(
-                    std::iter::empty(),
-                    create_new_group_option,
-                )
-                .await
-            }
-        }?;
+        let groups_count = config.parameter_groups.len();
+        let keys = config.parameter_groups.keys().map(|name| name.as_str());
+        let index = InputReader::request_select_item_in_list(keys, create_new_group_option).await?;
+
         if index.is_none() {
             return Ok(None);
         }
@@ -93,14 +79,12 @@ impl MoveToGroupFlow {
             self.add_parameter_to_new_group(config, parameter).await?;
             return Ok(Some(()));
         }
-        let mut parameters = config
-            .parameter_groups
-            .as_mut()
-            .unwrap()
-            .values_mut()
-            .skip(index);
+        let mut parameters = config.parameter_groups.values_mut().skip(index);
         let group = parameters.next().unwrap();
-        RemoteConfig::insert_param_to_group(group, mem::take(&mut self.parameter_name), parameter);
+        group
+            .parameters
+            .insert(mem::take(&mut self.parameter_name), parameter);
+
         Ok(Some(()))
     }
 
@@ -117,7 +101,13 @@ impl MoveToGroupFlow {
 
         let mut parameters = HashMap::new();
         parameters.insert(mem::take(&mut self.parameter_name), parameter);
-        config.insert_group(name, description, parameters);
+        config.parameter_groups.insert(
+            name,
+            ParameterGroup {
+                description,
+                parameters,
+            },
+        );
         Ok(())
     }
 
@@ -145,8 +135,6 @@ impl MoveToGroupFlow {
     ) -> Result<Option<()>> {
         let group = config
             .parameter_groups
-            .as_mut()
-            .unwrap()
             .iter_mut()
             .find_map(|(name, group)| {
                 if name == &group_name {
@@ -167,62 +155,19 @@ impl MoveToGroupFlow {
                 } else {
                     let mut parameters = HashMap::new();
                     parameters.insert(parameter_name, parameter);
-                    config.insert_group(group_name, None, parameters);
+                    config.parameter_groups.insert(
+                        group_name,
+                        ParameterGroup {
+                            description: None,
+                            parameters,
+                        },
+                    );
                 }
             }
             Some(group) => {
-                RemoteConfig::insert_param_to_group(group, parameter_name, parameter);
+                group.parameters.insert(parameter_name, parameter);
             }
         }
         Ok(Some(()))
-    }
-}
-
-impl RemoteConfig {
-    fn insert_group(
-        &mut self,
-        name: String,
-        description: Option<String>,
-        parameters: HashMap<String, Parameter>,
-    ) {
-        match self.parameter_groups.as_mut() {
-            Some(groups) => {
-                groups.insert(
-                    name,
-                    ParameterGroup {
-                        description,
-                        parameters: Some(parameters),
-                    },
-                );
-            }
-            None => {
-                let mut map = HashMap::new();
-                map.insert(
-                    name,
-                    ParameterGroup {
-                        description,
-                        parameters: Some(parameters),
-                    },
-                );
-                self.parameter_groups = Some(map);
-            }
-        }
-    }
-
-    fn insert_param_to_group(
-        group: &mut ParameterGroup,
-        parameter_name: String,
-        parameter: Parameter,
-    ) {
-        match group.parameters.as_mut() {
-            None => {
-                let mut map = HashMap::new();
-                map.insert(parameter_name, parameter);
-                group.parameters = Some(map);
-            }
-            Some(params) => {
-                params.insert(parameter_name, parameter);
-            }
-        }
     }
 }

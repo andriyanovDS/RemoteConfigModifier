@@ -2,7 +2,7 @@ use clap::Parser;
 use color_eyre::{owo_colors::OwoColorize, Report};
 use remote_config_modifier::add_parameter_flow::AddParameterFlow;
 use remote_config_modifier::delete_parameter_flow::DeleteParameterFlow;
-use remote_config_modifier::move_out_group::MoveOutGroupFlow;
+use remote_config_modifier::move_out_group_flow::MoveOutGroupFlow;
 use remote_config_modifier::move_to_group_flow::MoveToGroupFlow;
 use remote_config_modifier::show_config_flow::ShowConfigFlow;
 use remote_config_modifier::update_parameter_flow::UpdateParameterFlow;

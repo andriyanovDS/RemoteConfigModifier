@@ -5,11 +5,7 @@ use term_table::{Table, TableStyle};
 
 impl Parameter {
     pub fn make_row(&self, name: &str, group_name: Option<&str>) -> Vec<Row> {
-        let rows_count = self
-            .conditional_values
-            .as_ref()
-            .map(|cond| cond.len() + 1)
-            .unwrap_or(1);
+        let rows_count = self.conditional_values.len() + 1;
         let mut rows = Vec::with_capacity(rows_count);
         let default_row = Row::new(vec![
             TableCell::new(name),
@@ -24,19 +20,18 @@ impl Parameter {
             TableCell::new(group_name.unwrap_or("")),
         ]);
         rows.push(default_row);
-        if let Some(conditional_values) = self.conditional_values.as_ref() {
-            conditional_values
-                .iter()
-                .map(|(name, value)| {
-                    Row::new(vec![
-                        TableCell::new(""),
-                        TableCell::new(name),
-                        TableCell::new(""),
-                        TableCell::new(value.cell_content()),
-                    ])
-                })
-                .for_each(|row| rows.push(row))
-        }
+        self.conditional_values
+            .iter()
+            .map(|(name, value)| {
+                Row::new(vec![
+                    TableCell::new(""),
+                    TableCell::new(name),
+                    TableCell::new(""),
+                    TableCell::new(value.cell_content()),
+                ])
+            })
+            .for_each(|row| rows.push(row));
+
         rows
     }
 

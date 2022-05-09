@@ -241,7 +241,7 @@ impl Parts {
     fn parameter(self) -> (String, Parameter) {
         let parameter = Parameter {
             default_value: Some(self.default_value),
-            conditional_values: self.conditional_values,
+            conditional_values: self.conditional_values.unwrap_or_else(|| HashMap::new()),
             description: self.description,
             value_type: self.value_type,
         };

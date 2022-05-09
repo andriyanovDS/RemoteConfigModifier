@@ -38,20 +38,18 @@ impl ShowConfigFlow {
             .flatten()
             .for_each(|row| table.add_row(row));
 
-        if let Some(groups) = config.parameter_groups.as_ref() {
-            groups
-                .iter()
-                .flat_map(|(group_name, group)| {
-                    group.parameters.as_ref().map(|parameters| {
-                        parameters
-                            .iter()
-                            .map(|(name, parameter)| parameter.make_row(name, Some(group_name)))
-                    })
-                })
-                .flatten()
-                .flatten()
-                .for_each(|row| table.add_row(row))
-        }
+        config
+            .parameter_groups
+            .iter()
+            .map(|(group_name, group)| {
+                group
+                    .parameters
+                    .iter()
+                    .map(|(name, parameter)| parameter.make_row(name, Some(group_name)))
+            })
+            .flatten()
+            .flatten()
+            .for_each(|row| table.add_row(row));
 
         if !config.conditions.is_empty() {
             table.add_row(ShowConfigFlow::make_title_row("Conditions"));

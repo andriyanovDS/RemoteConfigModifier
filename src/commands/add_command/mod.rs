@@ -1,9 +1,9 @@
 use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
+use crate::projects::Project;
 use crate::remote_config::{Parameter, RemoteConfig};
 use crate::Add;
-use crate::projects::Project;
 use color_eyre::owo_colors::OwoColorize;
 use parameter_builder::ParameterBuilder;
 
@@ -42,7 +42,10 @@ impl AddCommand {
             &response.data.conditions,
         );
         match future.await {
-            Ok((name, parameter)) => self.add_parameter(name, parameter, response, &project).await,
+            Ok((name, parameter)) => {
+                self.add_parameter(name, parameter, response, &project)
+                    .await
+            }
             Err(message) => Err(Error { message }),
         }
     }

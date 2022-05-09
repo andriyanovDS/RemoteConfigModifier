@@ -51,5 +51,6 @@ pub struct MoveTo {
 pub struct Project {
     #[clap(short, long)]
     pub project: Option<String>,
-    pub main_project: Option<String>,
+    #[clap(short, long)]
+    pub main: Option<String>,
 }

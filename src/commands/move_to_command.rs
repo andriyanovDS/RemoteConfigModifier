@@ -1,8 +1,8 @@
 use crate::error::Result;
 use crate::io::{InputReader, InputString};
 use crate::network::NetworkService;
-use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
 use crate::projects::Project;
+use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
 use crate::MoveTo;
 use color_eyre::owo_colors::OwoColorize;
 use colored::{ColoredString, Colorize};

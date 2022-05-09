@@ -1,3 +1,4 @@
+use crate::projects::Project;
 use crate::remote_config::RemoteConfig;
 use authenticator::Authenticator;
 use reqwest::{
@@ -7,7 +8,6 @@ use reqwest::{
 use spinners::{Spinner, Spinners};
 use std::future::Future;
 use tracing::debug;
-use crate::projects::Project;
 
 mod authenticator;
 

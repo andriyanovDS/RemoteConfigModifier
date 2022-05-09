@@ -1,7 +1,8 @@
 use clap::Parser;
 use color_eyre::{owo_colors::OwoColorize, Report};
 use remote_config_modifier::commands::{
-    AddCommand, DeleteCommand, MoveOutCommand, MoveToCommand, ShowCommand, UpdateCommand,
+    AddCommand, CommandRunner, DeleteCommand, MoveOutCommand, MoveToCommand, ShowCommand,
+    UpdateCommand,
 };
 use remote_config_modifier::{Cli, Command};
 use tracing::error;
@@ -18,7 +19,7 @@ async fn main() -> Result<(), Report> {
         Command::Delete { name } => DeleteCommand::new(&name).start_flow().await,
         Command::MoveTo(arguments) => MoveToCommand::new(arguments).start_flow().await,
         Command::MoveOut { parameter } => MoveOutCommand::new(parameter).start_flow().await,
-        Command::Show(project) => ShowCommand::new().start_flow().await,
+        Command::Show(arguments) => CommandRunner::new(ShowCommand::new()).run(arguments).await,
     };
     if let Err(error) = result {
         error!("{}", error.message.red())

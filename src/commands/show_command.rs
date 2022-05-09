@@ -1,7 +1,9 @@
+use crate::commands::command::Command;
 use crate::error::Result;
 use crate::network::NetworkService;
-use crate::remote_config::RemoteConfig;
 use crate::projects::Project;
+use crate::remote_config::RemoteConfig;
+use async_trait::async_trait;
 use term_table::{
     row::Row,
     table_cell::{Alignment, TableCell},
@@ -19,20 +21,13 @@ impl ShowCommand {
         }
     }
 
-    pub async fn start_flow(mut self) -> Result<()> {
-        let project = Project::stub();
-        let mut response = self.network_service.get_remote_config(&project).await?;
-        let table = ShowCommand::build_table(&mut response.data);
-        println!("{}", table.render());
-        Ok(())
-    }
-
-    fn build_table(config: &mut RemoteConfig) -> Table {
+    fn build_table<'a, 'b>(config: &'a mut RemoteConfig, project_name: &'b str) -> Table<'a> {
         let mut table = Table::new();
         table.max_column_width = 40;
         table.style = TableStyle::simple();
 
-        table.add_row(ShowCommand::make_title_row("Parameters"));
+        let title = format!("{} parameters", project_name);
+        table.add_row(ShowCommand::make_title_row(title));
         config
             .parameters
             .iter()
@@ -54,22 +49,40 @@ impl ShowCommand {
             .for_each(|row| table.add_row(row));
 
         if !config.conditions.is_empty() {
-            table.add_row(ShowCommand::make_title_row("Conditions"));
+            table.add_row(ShowCommand::make_title_row("Conditions".to_string()));
             config
                 .conditions
                 .iter_mut()
                 .map(|condition| condition.make_row())
                 .for_each(|row| table.add_row(row))
         }
-
         table
     }
 
-    fn make_title_row(title: &str) -> Row {
+    fn make_title_row(title: String) -> Row<'static> {
         Row::new(vec![TableCell::new_with_alignment(
             title,
             5,
             Alignment::Center,
         )])
+    }
+}
+
+#[async_trait]
+impl Command for ShowCommand {
+    async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
+        let mut response = self.network_service.get_remote_config(&project).await?;
+        let table = ShowCommand::build_table(&mut response.data, &project.name);
+        println!("{}", table.render());
+        Ok(())
+    }
+
+    async fn run_for_multiple_projects(mut self, projects: &[Project]) -> Result<()> {
+        for project in projects {
+            let mut response = self.network_service.get_remote_config(&project).await?;
+            let table = ShowCommand::build_table(&mut response.data, &project.name);
+            println!("{}", table.render());
+        }
+        Ok(())
     }
 }

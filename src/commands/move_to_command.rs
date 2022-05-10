@@ -64,11 +64,12 @@ impl MoveToCommand {
         config: &mut RemoteConfig,
         parameter: Parameter,
     ) -> Result<Option<()>> {
-        println!("{}", "Select the group you want to move the parameter to:".green());
         let create_new_group_option = Some("Create new group");
         let groups_count = config.parameter_groups.len();
         let keys = config.parameter_groups.keys().map(|name| name.as_str());
-        let index = InputReader::request_select_item_in_list(keys, create_new_group_option).await;
+        let label = "Select the group you want to move the parameter to:";
+        let index =
+            InputReader::request_select_item_in_list(label, keys, create_new_group_option).await;
 
         if index.is_none() {
             return Ok(None);

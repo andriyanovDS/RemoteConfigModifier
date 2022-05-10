@@ -182,10 +182,7 @@ impl Command for AddCommand {
 
         let main_project = projects.first().unwrap();
         info!("Running for {} project", &main_project.name);
-        let response = self
-            .network_service
-            .get_remote_config(main_project)
-            .await?;
+        let response = self.network_service.get_remote_config(main_project).await?;
 
         let (name, parameter) = ParameterBuilder::start_flow(
             self.name.take(),

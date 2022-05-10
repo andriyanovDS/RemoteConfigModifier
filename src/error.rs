@@ -32,7 +32,7 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
         Self {
-            message: error.to_string()
+            message: error.to_string(),
         }
     }
 }

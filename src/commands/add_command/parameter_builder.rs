@@ -181,10 +181,9 @@ impl ParameterBuilder {
         if !InputReader::ask_confirmation(message).await? {
             return Ok(None);
         }
-        println!();
-        println!("Select one of available conditions:");
         let condition_names = conditions.iter().map(|cond| cond.name.as_str());
-        let index = InputReader::request_select_item_in_list(condition_names, None).await;
+        let label = "Select one of available conditions:";
+        let index = InputReader::request_select_item_in_list(label, condition_names, None).await;
         Ok(index)
     }
 

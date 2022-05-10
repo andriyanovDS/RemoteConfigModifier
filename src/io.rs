@@ -34,22 +34,24 @@ impl InputReader {
     }
 
     pub async fn request_select_item_in_list<'a>(
+        label: &str,
         list: impl Iterator<Item = &'a str>,
         custom_option: Option<&str>,
     ) -> Option<usize> {
         let mut count: usize = 1;
-        let mut buttons = Vec::new();
+        let mut menu_items = Vec::new();
+        menu_items.push(terminal_menu::label(label));
         for option in list {
             count += 1;
-            buttons.push(button(option));
+            menu_items.push(button(option));
         }
         if let Some(option) = custom_option {
-            buttons.push(button(option));
+            menu_items.push(button(option));
             count += 1;
         }
-        buttons.push(button("Or Go back"));
+        menu_items.push(button("Or Go back"));
 
-        let menu = menu(buttons);
+        let menu = menu(menu_items);
         run(&menu);
         let selected_index = mut_menu(&menu).selected_item_index();
 

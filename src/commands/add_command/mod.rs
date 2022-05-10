@@ -1,5 +1,5 @@
 use crate::commands::command::Command;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
 use crate::projects::Project;
@@ -124,7 +124,7 @@ impl AddCommand {
                 );
                 let message = message.yellow().to_string();
                 if !InputReader::ask_confirmation(&message).await? {
-                    return Ok(());
+                    return Err(Error::new("Operation was canceled."));
                 }
             }
             (Some(map), true) => {
@@ -141,7 +141,7 @@ impl AddCommand {
         };
         parameter.preview(&name, title, None);
         if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
-            return Ok(());
+            return Err(Error::new("Operation was canceled."));
         }
         match map_with_parameter {
             Some(map) => {

@@ -1,7 +1,8 @@
 use crate::error::{Error, Result};
 use std::fmt::Display;
+use std::io::Write;
+use terminal_menu::{button, menu, mut_menu, run};
 use tokio::io::AsyncBufReadExt;
-use tracing::info;
 
 pub struct InputReader;
 
@@ -14,7 +15,9 @@ impl InputReader {
         R: TryFrom<String, Error = Error>,
         M: Display + ?Sized,
     {
-        info!("{}", request_msg);
+        println!("{}", request_msg);
+        print!("> ");
+        std::io::stdout().flush()?;
         Self::wait_for_input().await
     }
 
@@ -33,30 +36,28 @@ impl InputReader {
     pub async fn request_select_item_in_list<'a>(
         list: impl Iterator<Item = &'a str>,
         custom_option: Option<&str>,
-    ) -> Result<Option<usize>> {
+    ) -> Option<usize> {
         let mut count: usize = 1;
-        for (index, item) in list.enumerate() {
+        let mut buttons = Vec::new();
+        for option in list {
             count += 1;
-            println!("{}) {}", index + 1, item);
+            buttons.push(button(option));
         }
         if let Some(option) = custom_option {
-            println!("{}) {}", count, option);
+            buttons.push(button(option));
             count += 1;
         }
-        println!("{}) Return back", count);
-        println!();
-        Self::wait_for_input::<InputUInt>()
-            .await
-            .and_then(|number| {
-                let number = number.0;
-                if number > count || count == 0 {
-                    Err(Error::new("Unknown option"))
-                } else if number == count {
-                    Ok(None)
-                } else {
-                    Ok(Some(number - 1))
-                }
-            })
+        buttons.push(button("Or Go back"));
+
+        let menu = menu(buttons);
+        run(&menu);
+        let selected_index = mut_menu(&menu).selected_item_index();
+
+        if selected_index == count - 1 {
+            None
+        } else {
+            Some(selected_index)
+        }
     }
 
     async fn wait_for_input<R>() -> Result<R>

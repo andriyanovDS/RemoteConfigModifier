@@ -184,7 +184,8 @@ impl ParameterBuilder {
         println!();
         println!("Select one of available conditions:");
         let condition_names = conditions.iter().map(|cond| cond.name.as_str());
-        InputReader::request_select_item_in_list(condition_names, None).await
+        let index = InputReader::request_select_item_in_list(condition_names, None).await;
+        Ok(index)
     }
 
     async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> BuilderResult

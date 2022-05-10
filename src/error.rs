@@ -24,7 +24,15 @@ impl Display for Error {
 impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
     fn from(error: Box<dyn std::error::Error + Send + Sync>) -> Self {
         Self {
-            message: format!("{}", error),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Self {
+            message: error.to_string()
         }
     }
 }

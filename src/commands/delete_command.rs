@@ -35,7 +35,7 @@ impl<'a> DeleteCommand {
 
         parameter.preview(&self.name, "Parameter will be deleted", None);
         if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
-            info!("Operation was canceled.");
+            warn!("Operation was canceled.");
             return Ok(());
         }
         self.network_service

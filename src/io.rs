@@ -22,19 +22,22 @@ impl InputReader {
         Self::wait_for_input().await
     }
 
-    pub async fn ask_confirmation<M>(confirmation_msg: &M) -> Result<bool>
+    pub async fn ask_confirmation<M>(confirmation_msg: &M) -> bool
     where
         M: Display + ?Sized,
     {
         loop {
-            let answer = Self::request_user_input::<InputString, M>(confirmation_msg).await?;
-            match answer.0.to_lowercase().as_ref() {
-                "y" | "yes" => {
-                    return Ok(true);
-                },
-                "n" | "no" => {
-                    return Ok(false);
-                },
+            let result = Self::request_user_input::<InputString, M>(confirmation_msg)
+                .await
+                .map(|answer| answer.0.to_lowercase());
+
+            match result.as_ref().map(|v| v.as_ref()) {
+                Ok("y" | "yes") => {
+                    return true;
+                }
+                Ok("n" | "no") => {
+                    return false;
+                }
                 _ => warn!("Invalid answer, try typing 'y' for yes or 'n' for no."),
             }
         }
@@ -62,10 +65,10 @@ impl InputReader {
         run(&menu);
         let selected_index = mut_menu(&menu).selected_item_index();
 
-        if selected_index == count - 1 {
+        if selected_index == count {
             None
         } else {
-            Some(selected_index)
+            Some(selected_index - 1)
         }
     }
 

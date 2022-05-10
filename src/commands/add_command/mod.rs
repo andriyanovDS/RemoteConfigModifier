@@ -70,7 +70,7 @@ impl AddCommand {
         .await?;
 
         let message = "Do you want to add same values to all projects? [Y,n]";
-        if InputReader::ask_confirmation(message).await? {
+        if InputReader::ask_confirmation(message).await {
             for (index, project) in projects_iter {
                 info!("Running for {} project", &project.name);
                 let mut response = self.network_service.get_remote_config(project).await?;
@@ -123,7 +123,7 @@ impl AddCommand {
                     name
                 );
                 let message = message.yellow().to_string();
-                if !InputReader::ask_confirmation(&message).await? {
+                if !InputReader::ask_confirmation(&message).await {
                     return Err(Error::new("Operation was canceled."));
                 }
             }
@@ -140,7 +140,7 @@ impl AddCommand {
             "Parameter will be added"
         };
         parameter.preview(&name, title, None);
-        if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
+        if !InputReader::ask_confirmation("Confirm: [Y,n]").await {
             return Err(Error::new("Operation was canceled."));
         }
         match map_with_parameter {
@@ -163,18 +163,14 @@ impl Command for AddCommand {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
         let response = self.network_service.get_remote_config(project).await?;
-        let future = ParameterBuilder::start_flow(
+        let (name, parameter) = ParameterBuilder::start_flow(
             self.name.take(),
             self.description.take(),
             &response.data.conditions,
-        );
-        match future.await {
-            Ok((name, parameter)) => {
-                self.add_parameter(name, parameter, response, project, false)
-                    .await
-            }
-            Err(error) => Err(error),
-        }
+        )
+        .await;
+        self.add_parameter(name, parameter, response, project, false)
+            .await
     }
 
     async fn run_for_multiple_projects(mut self, projects: &[Project]) -> Result<()> {
@@ -189,7 +185,7 @@ impl Command for AddCommand {
             self.description.take(),
             &response.data.conditions,
         )
-        .await?;
+        .await;
 
         self.apply_parameter_to_projects(name, parameter, projects, response, false)
             .await

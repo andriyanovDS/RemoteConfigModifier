@@ -63,7 +63,7 @@ impl UpdateCommand {
                 parameter.preview(&self.name, "Parameter will be updated", Some(group_name))
             }
         }
-        if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
+        if !InputReader::ask_confirmation("Confirm: [Y,n]").await {
             return Ok(());
         }
         let params = response.data.find_source_params(source);
@@ -96,7 +96,7 @@ impl Command for UpdateCommand {
             description,
             &config.conditions,
         )
-        .await?;
+        .await;
         self.update_parameter(name, parameter, response, &source, project)
             .await
     }
@@ -119,7 +119,7 @@ impl Command for UpdateCommand {
             description,
             &response.data.conditions,
         )
-        .await?;
+        .await;
 
         let mut add_command =
             AddCommand::new_with_network_service(None, None, self.network_service.take().unwrap());

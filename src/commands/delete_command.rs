@@ -34,7 +34,7 @@ impl<'a> DeleteCommand {
         let parameter = map_with_parameter.unwrap().remove(&self.name).unwrap();
 
         parameter.preview(&self.name, "Parameter will be deleted", None);
-        if !InputReader::ask_confirmation("Confirm: [Y,n]").await? {
+        if !InputReader::ask_confirmation("Confirm: [Y,n]").await {
             warn!("Operation was canceled.");
             return Ok(());
         }

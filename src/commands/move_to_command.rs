@@ -151,7 +151,7 @@ impl MoveToCommand {
                     "Group with name {} does not exist! Do you want to create it? [Y, n]",
                     &group_name
                 );
-                if !InputReader::ask_confirmation(&message.yellow()).await? {
+                if !InputReader::ask_confirmation(&message.yellow()).await {
                     return Ok(None);
                 } else {
                     let mut parameters = HashMap::new();

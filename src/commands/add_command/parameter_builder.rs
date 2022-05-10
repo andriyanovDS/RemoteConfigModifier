@@ -6,6 +6,7 @@ use color_eyre::owo_colors::{FgColorDisplay, OwoColorize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::string::String;
+use tracing::warn;
 
 #[derive(Debug)]
 pub struct ParameterBuilder {
@@ -20,8 +21,6 @@ struct Parts {
     value_type: ParameterValueType,
     conditional_values: HashMap<String, ParameterValue>,
 }
-
-type BuilderResult = Result<ParameterBuilder>;
 
 impl ParameterBuilder {
     pub fn new(name: String, parameter: &Parameter) -> Self {
@@ -39,11 +38,14 @@ impl ParameterBuilder {
         name: Option<String>,
         description: Option<String>,
         conditions: &[Condition],
-    ) -> Result<(String, Parameter)> {
-        let name = name
-            .map(Parts::validate_name)
-            .transpose()
-            .map_err(Error::new)?;
+    ) -> (String, Parameter) {
+        let name = match name.map(Parts::validate_name).transpose() {
+            Err(message) => {
+                warn!("{}", message.yellow());
+                None
+            }
+            Ok(name) => name,
+        };
         let builder: ParameterBuilder = match (name, description) {
             (Some(name), Some(description)) => {
                 let mut parts = Parts::new(name);
@@ -53,150 +55,183 @@ impl ParameterBuilder {
             (Some(name), None) => {
                 let parts = Parts::new(name);
                 let builder = ParameterBuilder { parts };
-                builder.request_description().await?
+                builder.request_description().await
             }
             (None, Some(description)) => {
-                let mut parts = Parts::new(Self::request_name().await?);
+                let mut parts = Parts::new(Self::request_name().await);
                 parts.description = Some(description);
                 ParameterBuilder { parts }
             }
             (None, None) => {
-                let parts = Parts::new(Self::request_name().await?);
+                let parts = Parts::new(Self::request_name().await);
                 let builder = ParameterBuilder { parts };
-                builder.request_description().await?
+                builder.request_description().await
             }
         };
         builder
             .request_value_type()
-            .await?
+            .await
             .request_default_value()
-            .await?
+            .await
             .request_condition(conditions)
             .await
-            .map(|builder| builder.parts.parameter())
+            .parts
+            .parameter()
     }
 
     pub async fn add_values(
         self,
         selected_conditions: impl Iterator<Item = &str>,
     ) -> Result<(String, Parameter)> {
-        let mut builder = self.request_default_value().await?;
+        let mut builder = self.request_default_value().await;
         for condition in selected_conditions {
-            builder = builder.request_value_for_condition(condition).await?;
+            builder = builder.request_value_for_condition(condition).await;
         }
         Ok(builder.parts.parameter())
     }
 
-    async fn request_name() -> Result<String> {
-        InputReader::request_user_input::<InputString, FgColorDisplay<Green, &str>>(
-            &"Enter parameter name:".green(),
-        )
-        .await
-        .and_then(|name| Parts::validate_name(name.0).map_err(Error::new))
+    async fn request_name() -> String {
+        loop {
+            let result =
+                InputReader::request_user_input::<InputString, FgColorDisplay<Green, &str>>(
+                    &"Enter parameter name:".green(),
+                )
+                .await
+                .map_err(|error| error.to_string())
+                .and_then(|name| Parts::validate_name(name.0).map_err(|e| e.to_string()));
+
+            match result {
+                Ok(name) => {
+                    return name;
+                }
+                Err(message) => {
+                    warn!("{}", message.yellow())
+                }
+            }
+        }
     }
 
-    async fn request_description(self) -> BuilderResult {
+    async fn request_description(self) -> ParameterBuilder {
         self.and_then(
             "Enter description (Optional):",
-            |mut parts, value: InputString| {
+            |parts, value: InputString| {
                 let description = value.0;
                 parts.description = if description.is_empty() {
                     None
                 } else {
                     Some(description)
                 };
-                Ok(parts)
+                Ok(())
             },
         )
         .await
     }
 
-    async fn request_value_type(self) -> BuilderResult {
+    async fn request_value_type(self) -> ParameterBuilder {
         let message = "Enter value type. It can be one of the following: \
             Boolean [b], \
             Number [n], \
             JSON [j], \
             String [s]: ";
-        self.and_then(message, |mut parts, value_type| {
+        self.and_then(message, |parts, value_type| {
             parts.value_type = value_type;
-            Ok(parts)
+            Ok(())
         })
         .await
     }
 
-    async fn request_default_value(self) -> BuilderResult {
+    async fn request_default_value(self) -> ParameterBuilder {
         self.and_then("Enter default value:", |parts, value: InputString| {
             parts.set_default_value(value.0).map_err(Error::new)
         })
         .await
     }
 
-    async fn request_condition(self, conditions: &[Condition]) -> BuilderResult {
+    async fn request_condition(self, conditions: &[Condition]) -> ParameterBuilder {
         if conditions.is_empty() {
-            return Ok(self);
+            return self;
         }
         let message = format!("{}", "Do you want to add conditional value? [Y,n]".green());
-        match self.request_select_condition(&message, conditions).await? {
-            None => Ok(self),
+        match self.request_select_condition(&message, conditions).await {
+            None => self,
             Some(index) => {
                 let condition_name = &conditions[index].name;
-                let mut builder = self.request_value_for_condition(condition_name).await?;
+                let mut builder = self.request_value_for_condition(condition_name).await;
                 let message = format!(
                     "{}",
                     "Do you want to add additional conditional value? [Y,n]".green()
                 );
-                while let Some(selected_index) = builder
-                    .request_select_condition(&message, conditions)
-                    .await?
+                while let Some(selected_index) =
+                    builder.request_select_condition(&message, conditions).await
                 {
                     let condition_name = &conditions[selected_index].name;
-                    builder = builder.request_value_for_condition(condition_name).await?;
+                    builder = builder.request_value_for_condition(condition_name).await;
                 }
-                Ok(builder)
+                builder
             }
         }
     }
 
-    async fn request_value_for_condition(self, condition_name: &str) -> BuilderResult {
+    async fn request_value_for_condition(self, condition_name: &str) -> ParameterBuilder {
         let message = format!("Enter value for {} condition:", &condition_name);
-        let value = InputReader::request_user_input::<InputString, FgColorDisplay<Green, String>>(
-            &message.green(),
-        )
-        .await?;
-        let valid_value =
-            Parts::validate_value(value.0, &self.parts.value_type).map_err(Error::new)?;
+        let valid_value = loop {
+            let result = InputReader::request_user_input::<
+                InputString,
+                FgColorDisplay<Green, String>,
+            >(&message.green())
+            .await
+            .map_err(|e| e.to_string())
+            .and_then(|value| {
+                Parts::validate_value(value.0, &self.parts.value_type).map_err(|e| e.to_string())
+            });
+
+            match result {
+                Ok(value) => {
+                    break value;
+                }
+                Err(message) => warn!("{}", message.yellow()),
+            }
+        };
         let mut parts = self.parts;
         parts.conditional_values.insert(
             condition_name.to_string(),
             ParameterValue::Value(valid_value),
         );
-        Ok(ParameterBuilder { parts })
+        ParameterBuilder { parts }
     }
 
     async fn request_select_condition(
         &self,
         message: &str,
         conditions: &[Condition],
-    ) -> Result<Option<usize>> {
-        if !InputReader::ask_confirmation(message).await? {
-            return Ok(None);
+    ) -> Option<usize> {
+        if !InputReader::ask_confirmation(message).await {
+            return None;
         }
         let condition_names = conditions.iter().map(|cond| cond.name.as_str());
         let label = "Select one of available conditions:";
-        let index = InputReader::request_select_item_in_list(label, condition_names, None).await;
-        Ok(index)
+        InputReader::request_select_item_in_list(label, condition_names, None).await
     }
 
-    async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> BuilderResult
+    async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> ParameterBuilder
     where
-        F: FnOnce(Parts, P) -> Result<Parts>,
+        F: Fn(&mut Parts, P) -> Result<()>,
         P: TryFrom<String, Error = Error>,
     {
-        let parts = self.parts;
-        InputReader::request_user_input::<P, FgColorDisplay<Green, &str>>(&request_msg.green())
+        let mut parts = self.parts;
+        loop {
+            let result = InputReader::request_user_input::<P, FgColorDisplay<Green, &str>>(
+                &request_msg.green(),
+            )
             .await
-            .and_then(|value| parts_modifier(parts, value))
-            .map(|parts| ParameterBuilder { parts })
+            .and_then(|value| parts_modifier(&mut parts, value));
+            match result {
+                Ok(_) => {
+                    return ParameterBuilder { parts };
+                }
+                Err(error) => warn!("{}", error.message.yellow()),
+            }
+        }
     }
 }
 
@@ -235,7 +270,7 @@ impl Parts {
             ParameterValueType::Boolean => value
                 .parse::<bool>()
                 .map(|_| value)
-                .map_err(|_| "Value must boolean"),
+                .map_err(|_| "Value must be a boolean"),
             ParameterValueType::Number => value
                 .parse::<f32>()
                 .map(|_| value)
@@ -248,11 +283,10 @@ impl Parts {
         }
     }
 
-    fn set_default_value(self, value: String) -> std::result::Result<Self, &'static str> {
+    fn set_default_value(&mut self, value: String) -> std::result::Result<(), &'static str> {
         let value = Self::validate_value(value, &self.value_type)?;
-        let mut parts = self;
-        parts.default_value = ParameterValue::Value(value);
-        Ok(parts)
+        self.default_value = ParameterValue::Value(value);
+        Ok(())
     }
 
     fn parameter(self) -> (String, Parameter) {

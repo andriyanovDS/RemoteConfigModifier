@@ -3,6 +3,7 @@ use std::fmt::Display;
 use std::io::Write;
 use terminal_menu::{button, menu, mut_menu, run};
 use tokio::io::AsyncBufReadExt;
+use tracing::warn;
 
 pub struct InputReader;
 
@@ -25,11 +26,17 @@ impl InputReader {
     where
         M: Display + ?Sized,
     {
-        let answer = Self::request_user_input::<InputString, M>(confirmation_msg).await?;
-        match answer.0.to_lowercase().as_ref() {
-            "y" | "yes" => Ok(true),
-            "n" | "no" => Ok(false),
-            _ => Err(Error::new("Unexpected answer")),
+        loop {
+            let answer = Self::request_user_input::<InputString, M>(confirmation_msg).await?;
+            match answer.0.to_lowercase().as_ref() {
+                "y" | "yes" => {
+                    return Ok(true);
+                },
+                "n" | "no" => {
+                    return Ok(false);
+                },
+                _ => warn!("Invalid answer, try typing 'y' for yes or 'n' for no."),
+            }
         }
     }
 

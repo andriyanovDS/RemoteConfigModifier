@@ -28,12 +28,6 @@ impl Projects {
 }
 
 impl Project {
-    pub fn stub() -> Self {
-        Self {
-            project_number: "774774183385".to_string(),
-            name: "Events".to_string(),
-        }
-    }
     pub fn url(&self) -> String {
         format!(
             "https://firebaseremoteconfig.googleapis.com/v1/projects/{}/remoteConfig",

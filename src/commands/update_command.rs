@@ -1,5 +1,5 @@
 use super::add_command::parameter_builder::ParameterBuilder;
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::io::InputReader;
 use crate::network::NetworkService;
 use crate::projects::Project;
@@ -42,9 +42,7 @@ impl UpdateCommand {
                 }
                 let name = std::mem::take(&mut self.name);
                 let description = parameter.description.clone();
-                ParameterBuilder::start_flow(Some(name), description, &config.conditions)
-                    .await
-                    .map_err(|message| Error { message })?
+                ParameterBuilder::start_flow(Some(name), description, &config.conditions).await?
             }
         };
 

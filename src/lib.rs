@@ -37,6 +37,8 @@ pub struct Add {
     pub name: Option<String>,
     #[clap(short, long)]
     pub description: Option<String>,
+    #[clap(flatten)]
+    pub project: Project,
 }
 
 #[derive(Debug, Args)]

@@ -22,6 +22,13 @@ where
 
     pub async fn run(self, arguments: crate::Project) -> Result<()> {
         let mut projects = Projects::load_projects().await?;
+
+        if projects.is_empty() {
+            return Err(Error::new(
+                "Projects are empty! Add projects to projects.json file.",
+            ));
+        }
+
         if let Some(project_name) = arguments.project {
             let requested_project = projects
                 .iter()

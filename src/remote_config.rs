@@ -13,7 +13,7 @@ pub struct RemoteConfig {
     pub parameter_groups: HashMap<String, ParameterGroup>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     pub name: String,
@@ -21,7 +21,7 @@ pub struct Condition {
     tag_color: TagColor,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum TagColor {
     #[serde(rename = "CONDITION_DISPLAY_COLOR_UNSPECIFIED")]
@@ -47,7 +47,7 @@ pub struct ParameterGroup {
     pub parameters: HashMap<String, Parameter>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Parameter {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,7 +59,7 @@ pub struct Parameter {
     pub value_type: ParameterValueType,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ParameterValueType {
     #[serde(rename = "PARAMETER_VALUE_TYPE_UNSPECIFIED")]
@@ -70,7 +70,7 @@ pub enum ParameterValueType {
     Json,
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum ParameterValue {
     Value(String),
@@ -104,6 +104,12 @@ impl Display for Condition {
             ("tag_color", Debug::fmt(&self.tag_color, f)?),
         ];
         f.debug_map().entries(entries).finish()
+    }
+}
+
+impl PartialEq for Condition {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.eq(&other.name)
     }
 }
 

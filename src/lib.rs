@@ -20,7 +20,7 @@ pub enum Command {
     /// Adds new parameter to config. Can be used to replace existing one
     Add(Add),
     /// Updates existing parameter to config
-    Update { name: String },
+    Update(Update),
     /// Deletes parameter from config
     Delete(Delete),
     /// Move parameter to group
@@ -37,6 +37,14 @@ pub struct Add {
     pub name: Option<String>,
     #[clap(short, long)]
     pub description: Option<String>,
+    #[clap(flatten)]
+    pub project: Project,
+}
+
+#[derive(Debug, Args)]
+pub struct Update {
+    #[clap(short, long)]
+    pub name: String,
     #[clap(flatten)]
     pub project: Project,
 }

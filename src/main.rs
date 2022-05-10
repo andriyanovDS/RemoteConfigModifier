@@ -18,7 +18,10 @@ async fn main() -> Result<(), Report> {
             let command = AddCommand::new(arguments.name, arguments.description);
             CommandRunner::new(command).run(arguments.project).await
         }
-        Command::Update { name } => UpdateCommand::new(name).start_flow().await,
+        Command::Update(arguments) => {
+            let command = UpdateCommand::new(arguments.name);
+            CommandRunner::new(command).run(arguments.project).await
+        }
         Command::Delete(arguments) => {
             let command = DeleteCommand::new(arguments.name);
             CommandRunner::new(command).run(arguments.project).await

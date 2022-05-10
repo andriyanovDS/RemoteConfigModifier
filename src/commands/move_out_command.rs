@@ -21,7 +21,7 @@ impl MoveOutCommand {
 
     async fn run(&mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
-        let mut response = self.network_service.get_remote_config(&project).await?;
+        let mut response = self.network_service.get_remote_config(project).await?;
         let remote_config = &mut response.data;
 
         if remote_config.parameter_groups.is_empty() {
@@ -56,7 +56,7 @@ impl MoveOutCommand {
             .parameters
             .insert(std::mem::take(&mut self.parameter_name), parameter);
         self.network_service
-            .update_remote_config(&project, response.data, response.etag)
+            .update_remote_config(project, response.data, response.etag)
             .await?;
         Ok(())
     }

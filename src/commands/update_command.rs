@@ -39,7 +39,7 @@ impl UpdateCommand {
                 match &source {
                     ParameterSource::Root => parameter.preview(&self.name, "Parameter found", None),
                     ParameterSource::Group(name) => {
-                        parameter.preview(&self.name, "Parameter found", Some(&name))
+                        parameter.preview(&self.name, "Parameter found", Some(name))
                     }
                 }
                 Some((source, parameter))
@@ -71,7 +71,7 @@ impl UpdateCommand {
         self.network_service
             .as_mut()
             .unwrap()
-            .update_remote_config(&project, response.data, response.etag)
+            .update_remote_config(project, response.data, response.etag)
             .await
             .map_err(Error::from)
     }
@@ -82,10 +82,10 @@ impl Command for UpdateCommand {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
         let network_service = self.network_service.as_mut().unwrap();
-        let mut response = network_service.get_remote_config(&project).await?;
+        let mut response = network_service.get_remote_config(project).await?;
         let config = &mut response.data;
 
-        let source = self.find_parameter_source(&config);
+        let source = self.find_parameter_source(config);
         if source.is_none() {
             return Ok(());
         }

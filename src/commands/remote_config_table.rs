@@ -80,7 +80,7 @@ impl ParameterValueType {
 impl ParameterValue {
     fn cell_content(&self) -> &str {
         match self {
-            Self::Value(string) => &string,
+            Self::Value(string) => string,
             Self::UseInAppDefault(_) => "Use in app default",
         }
     }

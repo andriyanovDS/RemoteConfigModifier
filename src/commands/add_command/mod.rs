@@ -64,7 +64,7 @@ impl AddCommand {
             name.clone(),
             parameter.clone(),
             response,
-            &main_project,
+            main_project,
             is_update,
         )
         .await?;
@@ -73,7 +73,7 @@ impl AddCommand {
         if InputReader::ask_confirmation(message).await? {
             for (index, project) in projects_iter {
                 info!("Running for {} project", &project.name);
-                let mut response = self.network_service.get_remote_config(&project).await?;
+                let mut response = self.network_service.get_remote_config(project).await?;
                 response
                     .data
                     .extend_conditions(&mut selected_conditions, index + 1);
@@ -81,7 +81,7 @@ impl AddCommand {
                     name.clone(),
                     parameter.clone(),
                     response,
-                    &project,
+                    project,
                     is_update,
                 )
                 .await?;
@@ -95,11 +95,11 @@ impl AddCommand {
                     .iter()
                     .map(|(name, _)| name.as_str());
                 let (name, parameter) = builder.add_values(selected_condition_names).await?;
-                let mut response = self.network_service.get_remote_config(&project).await?;
+                let mut response = self.network_service.get_remote_config(project).await?;
                 response
                     .data
                     .extend_conditions(&mut selected_conditions, index + 1);
-                self.add_parameter(name, parameter, response, &project, is_update)
+                self.add_parameter(name, parameter, response, project, is_update)
                     .await?;
             }
         }
@@ -152,7 +152,7 @@ impl AddCommand {
             }
         }
         self.network_service
-            .update_remote_config(&project, response.data, response.etag)
+            .update_remote_config(project, response.data, response.etag)
             .await?;
         Ok(())
     }
@@ -162,7 +162,7 @@ impl AddCommand {
 impl Command for AddCommand {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
-        let response = self.network_service.get_remote_config(&project).await?;
+        let response = self.network_service.get_remote_config(project).await?;
         let future = ParameterBuilder::start_flow(
             self.name.take(),
             self.description.take(),
@@ -170,7 +170,7 @@ impl Command for AddCommand {
         );
         match future.await {
             Ok((name, parameter)) => {
-                self.add_parameter(name, parameter, response, &project, false)
+                self.add_parameter(name, parameter, response, project, false)
                     .await
             }
             Err(error) => Err(error),
@@ -184,7 +184,7 @@ impl Command for AddCommand {
         info!("Running for {} project", &main_project.name);
         let response = self
             .network_service
-            .get_remote_config(&main_project)
+            .get_remote_config(main_project)
             .await?;
 
         let (name, parameter) = ParameterBuilder::start_flow(

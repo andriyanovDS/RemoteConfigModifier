@@ -33,21 +33,18 @@ impl ShowCommand {
         config
             .parameters
             .iter()
-            .map(|(name, parameter)| parameter.make_row(name, None))
-            .flatten()
+            .flat_map(|(name, parameter)| parameter.make_row(name, None))
             .for_each(|row| table.add_row(row));
 
         config
             .parameter_groups
             .iter()
-            .map(|(group_name, group)| {
+            .flat_map(|(group_name, group)| {
                 group
                     .parameters
                     .iter()
-                    .map(|(name, parameter)| parameter.make_row(name, Some(group_name)))
+                    .flat_map(|(name, parameter)| parameter.make_row(name, Some(group_name)))
             })
-            .flatten()
-            .flatten()
             .for_each(|row| table.add_row(row));
 
         if !config.conditions.is_empty() {
@@ -74,7 +71,7 @@ impl ShowCommand {
 impl Command for ShowCommand {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
-        let mut response = self.network_service.get_remote_config(&project).await?;
+        let mut response = self.network_service.get_remote_config(project).await?;
         let table = ShowCommand::build_table(&mut response.data, &project.name);
         println!("{}", table.render());
         Ok(())
@@ -83,7 +80,7 @@ impl Command for ShowCommand {
     async fn run_for_multiple_projects(mut self, projects: &[Project]) -> Result<()> {
         for project in projects {
             info!("Running for {} project", &project.name);
-            match self.network_service.get_remote_config(&project).await {
+            match self.network_service.get_remote_config(project).await {
                 Err(error) => {
                     error!("{}", error.to_string().red());
                 }
@@ -94,5 +91,11 @@ impl Command for ShowCommand {
             }
         }
         Ok(())
+    }
+}
+
+impl Default for ShowCommand {
+    fn default() -> Self {
+        Self::new()
     }
 }

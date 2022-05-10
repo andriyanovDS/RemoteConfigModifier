@@ -22,7 +22,7 @@ impl<'a> DeleteCommand {
 
     async fn run(&mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
-        let mut response = self.network_service.get_remote_config(&project).await?;
+        let mut response = self.network_service.get_remote_config(project).await?;
         let remote_config = &mut response.data;
         let map_with_parameter = remote_config.get_map_for_existing_parameter(&self.name);
 
@@ -39,7 +39,7 @@ impl<'a> DeleteCommand {
             return Ok(());
         }
         self.network_service
-            .update_remote_config(&project, response.data, response.etag)
+            .update_remote_config(project, response.data, response.etag)
             .await?;
         Ok(())
     }

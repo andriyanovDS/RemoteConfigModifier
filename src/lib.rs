@@ -52,7 +52,7 @@ pub struct Update {
 #[derive(Debug, Args)]
 pub struct MoveOut {
     #[clap(long)]
-    pub parameter: String,
+    pub name: String,
     #[clap(flatten)]
     pub project: Project,
 }
@@ -60,7 +60,7 @@ pub struct MoveOut {
 #[derive(Debug, Args)]
 pub struct MoveTo {
     #[clap(long)]
-    pub parameter: String,
+    pub name: String,
     #[clap(short, long)]
     pub group: Option<String>,
     #[clap(flatten)]

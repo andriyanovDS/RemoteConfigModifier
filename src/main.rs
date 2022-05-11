@@ -1,10 +1,10 @@
 use clap::Parser;
 use color_eyre::{owo_colors::OwoColorize, Report};
-use remote_config_modifier::commands::{
+use rcm::commands::{
     AddCommand, CommandRunner, DeleteCommand, MoveOutCommand, MoveToCommand, ShowCommand,
     UpdateCommand,
 };
-use remote_config_modifier::{Cli, Command};
+use rcm::{Cli, Command};
 use tracing::error;
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::fmt;
@@ -27,11 +27,11 @@ async fn main() -> Result<(), Report> {
             CommandRunner::new(command).run(arguments.project).await
         }
         Command::MoveTo(arguments) => {
-            let command = MoveToCommand::new(arguments.parameter, arguments.group);
+            let command = MoveToCommand::new(arguments.name, arguments.group);
             CommandRunner::new(command).run(arguments.project).await
         }
         Command::MoveOut(arguments) => {
-            let command = MoveOutCommand::new(arguments.parameter);
+            let command = MoveOutCommand::new(arguments.name);
             CommandRunner::new(command).run(arguments.project).await
         }
         Command::Show(arguments) => CommandRunner::new(ShowCommand::new()).run(arguments).await,

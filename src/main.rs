@@ -1,10 +1,12 @@
 use clap::Parser;
 use color_eyre::{owo_colors::OwoColorize, Report};
 use rcm::commands::{
-    AddCommand, CommandRunner, DeleteCommand, MoveOutCommand, MoveToCommand, ShowCommand,
-    UpdateCommand,
+    AddCommand, CommandRunner, ConfigCommand, DeleteCommand, MoveOutCommand, MoveToCommand,
+    ShowCommand, UpdateCommand,
 };
 use rcm::{Cli, Command};
+use std::ffi::OsStr;
+use std::path::Path;
 use tracing::error;
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::fmt;
@@ -13,28 +15,30 @@ use tracing_subscriber::fmt;
 async fn main() -> Result<(), Report> {
     setup()?;
     let cli = Cli::parse();
+    let command_runner = CommandRunner::new(app_name());
     let result = match cli.command {
         Command::Add(arguments) => {
             let command = AddCommand::new(arguments.name, arguments.description);
-            CommandRunner::new(command).run(arguments.project).await
+            command_runner.run(command, arguments.project).await
         }
         Command::Update(arguments) => {
             let command = UpdateCommand::new(arguments.name);
-            CommandRunner::new(command).run(arguments.project).await
+            command_runner.run(command, arguments.project).await
         }
         Command::Delete(arguments) => {
             let command = DeleteCommand::new(arguments.name);
-            CommandRunner::new(command).run(arguments.project).await
+            command_runner.run(command, arguments.project).await
         }
         Command::MoveTo(arguments) => {
             let command = MoveToCommand::new(arguments.name, arguments.group);
-            CommandRunner::new(command).run(arguments.project).await
+            command_runner.run(command, arguments.project).await
         }
         Command::MoveOut(arguments) => {
             let command = MoveOutCommand::new(arguments.name);
-            CommandRunner::new(command).run(arguments.project).await
+            command_runner.run(command, arguments.project).await
         }
-        Command::Show(arguments) => CommandRunner::new(ShowCommand::new()).run(arguments).await,
+        Command::Show(arguments) => command_runner.run(ShowCommand::new(), arguments).await,
+        Command::Config(arguments) => ConfigCommand::new(app_name(), arguments).run(),
     };
     if let Err(error) = result {
         error!("{}", error.message.red())
@@ -64,4 +68,15 @@ fn setup() -> Result<(), Report> {
         .init();
 
     Ok(())
+}
+
+fn app_name() -> String {
+    std::env::args()
+        .next()
+        .as_ref()
+        .map(Path::new)
+        .and_then(Path::file_name)
+        .and_then(OsStr::to_str)
+        .map(String::from)
+        .unwrap()
 }

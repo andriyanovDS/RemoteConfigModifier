@@ -1,8 +1,8 @@
 use crate::commands::command::Command;
+use crate::config::Project;
 use crate::error::Result;
 use crate::io::InputReader;
 use crate::network::NetworkService;
-use crate::projects::Project;
 use async_trait::async_trait;
 use color_eyre::owo_colors::OwoColorize;
 use tracing::{error, info, warn};

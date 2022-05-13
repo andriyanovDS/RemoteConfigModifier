@@ -1,10 +1,10 @@
 use super::add_command::parameter_builder::ParameterBuilder;
 use crate::commands::command::Command;
 use crate::commands::AddCommand;
+use crate::config::Project;
 use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
-use crate::projects::Project;
 use crate::remote_config::{Parameter, RemoteConfig};
 use async_trait::async_trait;
 use color_eyre::owo_colors::OwoColorize;

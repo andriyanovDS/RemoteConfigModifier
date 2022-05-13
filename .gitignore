@@ -15,5 +15,5 @@ Cargo.lock
 /target
 clientsecret.json
 token_cache.json
-projects.json
+config.json
 /.idea

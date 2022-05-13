@@ -1,4 +1,4 @@
-use crate::projects::Project;
+use crate::config::Project;
 use crate::remote_config::RemoteConfig;
 use authenticator::Authenticator;
 use reqwest::{

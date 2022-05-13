@@ -1,5 +1,6 @@
+use super::config_command::ConfigFile;
+use crate::config::Project;
 use crate::error::{Error, Result};
-use crate::projects::{Project, Projects};
 use async_trait::async_trait;
 
 #[async_trait]
@@ -8,20 +9,19 @@ pub trait Command {
     async fn run_for_multiple_projects(self, projects: &[Project]) -> Result<()>;
 }
 
-pub struct CommandRunner<C: Command> {
-    command: C,
+pub struct CommandRunner {
+    config_file: ConfigFile,
 }
 
-impl<C> CommandRunner<C>
-where
-    C: Command,
-{
-    pub fn new(command: C) -> Self {
-        Self { command }
+impl CommandRunner {
+    pub fn new(app_name: String) -> Self {
+        Self {
+            config_file: ConfigFile::new(app_name),
+        }
     }
 
-    pub async fn run(self, arguments: crate::Project) -> Result<()> {
-        let mut projects = Projects::load_projects().await?;
+    pub async fn run<C: Command>(self, command: C, arguments: crate::Project) -> Result<()> {
+        let mut projects = self.config_file.load()?.projects;
 
         if projects.is_empty() {
             return Err(Error::new(
@@ -44,7 +44,7 @@ where
                     };
                     Err(error)
                 }
-                Some(project) => self.command.run_for_single_project(project).await,
+                Some(project) => command.run_for_single_project(project).await,
             };
         }
         if let Some(main_project_name) = arguments.main {
@@ -68,11 +68,11 @@ where
                 }
                 Some(index) => {
                     projects.swap(0, index);
-                    self.command.run_for_multiple_projects(&projects).await
+                    command.run_for_multiple_projects(&projects).await
                 }
             };
         } else {
-            self.command.run_for_multiple_projects(&projects).await
+            command.run_for_multiple_projects(&projects).await
         }
     }
 }

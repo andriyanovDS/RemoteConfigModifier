@@ -49,8 +49,7 @@ impl InputReader {
         custom_option: Option<&str>,
     ) -> Option<usize> {
         let mut count: usize = 1;
-        let mut menu_items = Vec::new();
-        menu_items.push(terminal_menu::label(label));
+        let mut menu_items = vec![terminal_menu::label(label)];
         for option in list {
             count += 1;
             menu_items.push(button(option));

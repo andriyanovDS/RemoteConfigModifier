@@ -42,6 +42,8 @@ impl ConfigCommand {
             }
             Subcommand::Show(arguments) => {
                 let config = self.config_file.load()?;
+                let config_path = self.config_file.config_path()?;
+                info!("Config was loaded from {}", config_path);
                 config.render(arguments.project.as_ref());
                 Ok(())
             },

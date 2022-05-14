@@ -16,7 +16,7 @@ impl InputReader {
         R: TryFrom<String, Error = Error>,
         M: Display + ?Sized,
     {
-        println!("{}", request_msg);
+        println!("  {}", request_msg);
         print!("> ");
         std::io::stdout().flush()?;
         Self::wait_for_input().await
@@ -47,6 +47,7 @@ impl InputReader {
         label: &str,
         list: impl Iterator<Item = &'a str>,
         custom_option: Option<&str>,
+        can_go_back: bool,
     ) -> Option<usize> {
         let mut count: usize = 1;
         let mut menu_items = vec![terminal_menu::label(label)];
@@ -58,13 +59,15 @@ impl InputReader {
             menu_items.push(button(option));
             count += 1;
         }
-        menu_items.push(button("Or Go back"));
+        if can_go_back {
+            menu_items.push(button("Or Go back"));
+        }
 
         let menu = menu(menu_items);
         run(&menu);
         let selected_index = mut_menu(&menu).selected_item_index();
 
-        if selected_index == count {
+        if can_go_back && selected_index == count {
             None
         } else {
             Some(selected_index - 1)

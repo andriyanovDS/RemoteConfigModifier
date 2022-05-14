@@ -94,9 +94,7 @@ pub enum Config {
     Add(AddProject),
     /// Remove project from configuration file
     #[clap(name = "rm")]
-    Remove {
-        name: String
-    },
+    Remove { name: String },
     /// Show configuration
     Show(Project),
 }

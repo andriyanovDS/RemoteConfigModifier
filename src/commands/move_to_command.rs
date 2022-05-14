@@ -69,7 +69,8 @@ impl MoveToCommand {
         let keys = config.parameter_groups.keys().map(|name| name.as_str());
         let label = "Select the group you want to move the parameter to:";
         let index =
-            InputReader::request_select_item_in_list(label, keys, create_new_group_option).await;
+            InputReader::request_select_item_in_list(label, keys, create_new_group_option, true)
+                .await;
 
         if index.is_none() {
             return Ok(None);

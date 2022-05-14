@@ -128,16 +128,17 @@ impl ParameterBuilder {
     }
 
     async fn request_value_type(self) -> ParameterBuilder {
-        let message = "Enter value type. It can be one of the following: \
-            Boolean [b], \
-            Number [n], \
-            JSON [j], \
-            String [s]: ";
-        self.and_then(message, |parts, value_type| {
-            parts.value_type = value_type;
-            Ok(())
-        })
-        .await
+        let mut parts = self.parts;
+        let list = vec!["Boolean", "Number", "String", "JSON"];
+        let values_iter = list.iter().copied();
+        let label = "Select value type:".green().to_string();
+        println!();
+        let index = InputReader::request_select_item_in_list(&label, values_iter, None, false)
+            .await
+            .expect("Incorrect index was selected");
+        let value_type = ParameterValueType::from(list[index]);
+        parts.value_type = value_type;
+        ParameterBuilder { parts }
     }
 
     async fn request_default_value(self) -> ParameterBuilder {
@@ -210,7 +211,8 @@ impl ParameterBuilder {
         }
         let condition_names = conditions.iter().map(|cond| cond.name.as_str());
         let label = "Select one of available conditions:";
-        InputReader::request_select_item_in_list(label, condition_names, None).await
+        println!();
+        InputReader::request_select_item_in_list(label, condition_names, None, true).await
     }
 
     async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> ParameterBuilder
@@ -300,16 +302,14 @@ impl Parts {
     }
 }
 
-impl TryFrom<String> for ParameterValueType {
-    type Error = Error;
-
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        match &value.to_lowercase().as_ref() {
-            &"b" | &"boolean" => Ok(Self::Boolean),
-            &"j" | &"json" => Ok(Self::Json),
-            &"n" | &"number" => Ok(Self::Number),
-            &"s" | &"string" => Ok(Self::String),
-            _ => Err(Error::new("Unexpected value. It can be one of the following: Boolean [b], Number [n], JSON [j], String [s]"))
+impl From<&str> for ParameterValueType {
+    fn from(value: &str) -> Self {
+        match value {
+            "Boolean" => Self::Boolean,
+            "JSON" => Self::Json,
+            "Number" => Self::Number,
+            "String" => Self::String,
+            _ => panic!("Unexpected value"),
         }
     }
 }

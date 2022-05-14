@@ -40,7 +40,12 @@ impl ConfigFile {
     pub fn store(&self, path: PathBuf) -> Result<()> {
         if !path.exists() {
             return Err(Error {
-                message: format!("File does not exist at path {:?}", path),
+                message: format!("File does not exist at path {:?}.", path),
+            });
+        }
+        if path.is_dir() {
+            return Err(Error {
+                message: format!("{:?} is a directory, but must be a file!", path)
             });
         }
         let config = ConfigFile::load_at_path(&path)?;
@@ -59,7 +64,7 @@ impl ConfigFile {
             path_buf
                 .to_str()
                 .map(|str| str.to_string())
-                .ok_or_else(|| Error::new("Failed to construct config path"))
+                .ok_or_else(|| Error::new("Failed to construct config path."))
         })
     }
 
@@ -69,18 +74,18 @@ impl ConfigFile {
                 let mut content = String::new();
                 config_file.read_to_string(&mut content).map_err(|error| {
                     debug!("Error: {:?}", error);
-                    Error::new("Failed to read config file")
+                    Error::new("Failed to read config file.")
                 })?;
                 serde_json::from_slice::<Config>(content.as_bytes()).map_err(|error| {
                     debug!("Error: {:?}", error);
-                    Error::new("Failed to read config file")
+                    Error::new("Failed to parse config file.")
                 })
             }
             Err(error) if error.kind() == NotFound => {
                 if let Some(parent) = file_path.parent() {
                     fs::create_dir_all(parent).map_err(|error| {
                         debug!("Error: {:?}", error);
-                        Error::new("Failed to create config directory")
+                        Error::new("Failed to create config directory.")
                     })?;
                     let config = Config {
                         projects: Vec::new(),
@@ -89,7 +94,7 @@ impl ConfigFile {
                     Ok(config)
                 } else {
                     debug!("Error: {:?}", error);
-                    Err(Error::new("Failed to open configuration file"))
+                    Err(Error::new("Failed to open configuration file."))
                 }
             }
             Err(error) => Err(Error {
@@ -104,7 +109,7 @@ impl ConfigFile {
         let path = directories
             .config_dir()
             .to_str()
-            .ok_or_else(|| Error::new("Could not determine configuration file path"))?;
+            .ok_or_else(|| Error::new("Could not determine configuration file path."))?;
         let path = [path, CONFIG_FILE_NAME].iter().collect();
         Ok(path)
     }
@@ -112,7 +117,7 @@ impl ConfigFile {
 
 impl Config {
     fn store(&self, path: &Path) -> Result<()> {
-        let parent_path = path.parent().ok_or_else(|| Error::new("Invalid path"))?;
+        let parent_path = path.parent().ok_or_else(|| Error::new("Invalid path."))?;
         fs::create_dir_all(parent_path).map_err(|error| {
             debug!("Error: {:?}", error);
             Error::new("Failed to create config directory.")

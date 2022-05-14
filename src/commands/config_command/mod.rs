@@ -31,6 +31,11 @@ impl ConfigCommand {
                 config.render(None);
                 Ok(())
             }
+            Subcommand::Remove { name } => {
+                let config = self.config_file.remove_project(name.as_str())?;
+                config.render(None);
+                Ok(())
+            }
             Subcommand::Store { path } => {
                 self.config_file.store(path)?;
                 let file_path = self.config_file.config_path()?;

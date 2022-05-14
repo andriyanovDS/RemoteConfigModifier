@@ -27,6 +27,14 @@ impl ConfigFile {
         Ok(config)
     }
 
+    pub fn remove_project(&self, project_name: &str) -> Result<Config> {
+        let mut config = self.load()?;
+        config.projects.retain(|project| project.name.as_str() != project_name);
+        let config_path = self.configuration_file_path()?;
+        config.store(config_path.as_path())?;
+        Ok(config)
+    }
+
     pub fn store(&self, path: PathBuf) -> Result<()> {
         if !path.exists() {
             return Err(Error {

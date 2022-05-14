@@ -92,6 +92,11 @@ pub enum Config {
     Store { path: std::path::PathBuf },
     /// Add project to configuration file
     Add(AddProject),
+    /// Remove project from configuration file
+    #[clap(name = "rm")]
+    Remove {
+        name: String
+    },
     /// Show configuration
     Show(Project),
 }

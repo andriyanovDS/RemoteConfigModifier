@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use tracing::info;
 
 pub mod parameter_builder;
+mod conditions;
+mod condition_builder;
 
 pub struct AddCommand {
     name: Option<String>,

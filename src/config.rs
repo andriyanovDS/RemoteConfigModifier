@@ -10,14 +10,16 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Project {
     pub name: String,
-    pub project_number: String,
+    pub app_ids: Vec<String>,
+    project_number: String,
 }
 
 impl Project {
-    pub fn new(name: String, project_number: String) -> Self {
+    pub fn new(name: String, project_number: String, app_ids: Vec<String>) -> Self {
         Self {
             name,
             project_number,
+            app_ids,
         }
     }
     pub fn url(&self) -> String {

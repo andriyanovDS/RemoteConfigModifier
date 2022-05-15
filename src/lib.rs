@@ -104,6 +104,9 @@ pub struct AddProject {
     /// Project name
     #[clap(short, long)]
     pub name: String,
+    /// Application IDs
+    #[clap(short, long)]
+    pub app_ids: Option<Vec<String>>,
     /// Project description
     #[clap(long)]
     pub project_number: String,

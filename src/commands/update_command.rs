@@ -95,6 +95,7 @@ impl Command for UpdateCommand {
             Some(std::mem::take(&mut self.name)),
             description,
             &config.conditions,
+            &project.app_ids,
         )
         .await;
         self.update_parameter(name, parameter, response, &source, project)
@@ -118,6 +119,7 @@ impl Command for UpdateCommand {
             Some(std::mem::take(&mut self.name)),
             description,
             &response.data.conditions,
+            &main_project.app_ids,
         )
         .await;
 

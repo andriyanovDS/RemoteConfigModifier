@@ -1,12 +1,13 @@
+use super::condition_builder::ConditionListItem;
 use crate::error::{Error, Result};
 use crate::io::{InputReader, InputString};
-use crate::remote_config::{Condition, Parameter, ParameterValue, ParameterValueType};
+use crate::remote_config::{Condition, Parameter, ParameterValue, ParameterValueType, TagColor};
 use color_eyre::owo_colors::colors::Green;
 use color_eyre::owo_colors::{FgColorDisplay, OwoColorize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::string::String;
-use tracing::warn;
+use tracing::{info, warn};
 
 #[derive(Debug)]
 pub struct ParameterBuilder {
@@ -38,6 +39,7 @@ impl ParameterBuilder {
         name: Option<String>,
         description: Option<String>,
         conditions: &[Condition],
+        app_ids: &[String],
     ) -> (String, Parameter) {
         let name = match name.map(Parts::validate_name).transpose() {
             Err(message) => {
@@ -68,6 +70,8 @@ impl ParameterBuilder {
                 builder.request_description().await
             }
         };
+        let condition = builder.create_new_condition(conditions, app_ids).await;
+        info!("condition {:?}", condition);
         builder
             .request_value_type()
             .await
@@ -210,9 +214,35 @@ impl ParameterBuilder {
             return None;
         }
         let condition_names = conditions.iter().map(|cond| cond.name.as_str());
+        let custom_option = Some("Create new condition");
         let label = "Select one of available conditions:";
         println!();
-        InputReader::request_select_item_in_list(label, condition_names, None, true).await
+        InputReader::request_select_item_in_list(label, condition_names, custom_option, true).await
+    }
+
+    async fn create_new_condition(
+        &self,
+        existing_conditions: &[Condition],
+        app_ids: &[String],
+    ) -> Option<Condition> {
+        let label = "Write condition name:".green();
+        let name = loop {
+            let name = InputReader::request_user_input::<InputString, FgColorDisplay<Green, &str>>(&label)
+                .await
+                .unwrap()
+                .0;
+            if existing_conditions.iter().find(|cond| cond.name == name).is_some() {
+                warn!("Condition with name {} already exists.", name);
+            } else {
+                break name;
+            }
+        };
+        let expression = ConditionListItem::select_condition(app_ids).await;
+        expression.map(|expression| Condition {
+            name,
+            expression,
+            tag_color: TagColor::Green,
+        })
     }
 
     async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> ParameterBuilder

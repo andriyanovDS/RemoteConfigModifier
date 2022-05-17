@@ -10,9 +10,9 @@ use parameter_builder::ParameterBuilder;
 use std::collections::HashMap;
 use tracing::info;
 
-pub mod parameter_builder;
-mod conditions;
 mod condition_builder;
+mod conditions;
+pub mod parameter_builder;
 
 pub struct AddCommand {
     name: Option<String>,
@@ -169,6 +169,7 @@ impl Command for AddCommand {
             self.name.take(),
             self.description.take(),
             &response.data.conditions,
+            &project.app_ids,
         )
         .await;
         self.add_parameter(name, parameter, response, project, false)
@@ -186,6 +187,7 @@ impl Command for AddCommand {
             self.name.take(),
             self.description.take(),
             &response.data.conditions,
+            &main_project.app_ids,
         )
         .await;
 

@@ -45,7 +45,7 @@ impl ConfigFile {
         }
         if path.is_dir() {
             return Err(Error {
-                message: format!("{:?} is a directory, but must be a file!", path)
+                message: format!("{:?} is a directory, but must be a file!", path),
             });
         }
         let config = ConfigFile::load_at_path(&path)?;

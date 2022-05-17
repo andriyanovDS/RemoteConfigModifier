@@ -18,12 +18,12 @@ pub struct RemoteConfig {
 pub struct Condition {
     pub name: String,
     pub expression: String,
-    tag_color: TagColor,
+    pub tag_color: TagColor,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum TagColor {
+pub enum TagColor {
     #[serde(rename = "CONDITION_DISPLAY_COLOR_UNSPECIFIED")]
     Unspecified,
     Blue,

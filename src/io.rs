@@ -47,6 +47,7 @@ impl InputReader {
         label: &str,
         list: impl Iterator<Item = &'a str>,
         custom_option: Option<&str>,
+        // TODO: add separate func for go back
         can_go_back: bool,
     ) -> Option<usize> {
         let mut count: usize = 1;

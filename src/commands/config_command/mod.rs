@@ -26,7 +26,11 @@ impl ConfigCommand {
     pub fn run(self) -> Result<()> {
         match self.subcommand {
             Subcommand::Add(data) => {
-                let project = Project::new(data.name, data.project_number, data.app_ids.unwrap_or(Vec::new()));
+                let project = Project::new(
+                    data.name,
+                    data.project_number,
+                    data.app_ids.unwrap_or(Vec::new()),
+                );
                 let config = self.config_file.add_project(project)?;
                 config.render(None);
                 Ok(())

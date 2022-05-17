@@ -30,6 +30,7 @@ impl CommandRunner {
         }
 
         if let Some(project_name) = arguments.project {
+            let project_name = project_name.to_lowercase();
             let requested_project = projects
                 .iter()
                 .find(|project| project.name.to_lowercase() == project_name);
@@ -48,6 +49,7 @@ impl CommandRunner {
             };
         }
         if let Some(main_project_name) = arguments.main {
+            let main_project_name = main_project_name.to_lowercase();
             let project_index = projects.iter().enumerate().find_map(|(index, project)| {
                 if project.name.to_lowercase() == main_project_name {
                     Some(index)

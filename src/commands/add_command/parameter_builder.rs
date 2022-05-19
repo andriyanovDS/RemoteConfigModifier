@@ -1,13 +1,13 @@
-use super::condition_builder::ConditionListItem;
+use super::condition_builder;
 use crate::error::{Error, Result};
-use crate::io::{InputReader, InputString};
+use crate::io::InputReader;
 use crate::remote_config::{Condition, Parameter, ParameterValue, ParameterValueType, TagColor};
 use color_eyre::owo_colors::colors::Green;
 use color_eyre::owo_colors::{FgColorDisplay, OwoColorize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::string::String;
-use tracing::{info, warn};
+use tracing::warn;
 
 #[derive(Debug)]
 pub struct ParameterBuilder {
@@ -70,8 +70,6 @@ impl ParameterBuilder {
                 builder.request_description().await
             }
         };
-        let condition = builder.create_new_condition(conditions, app_ids).await;
-        info!("condition {:?}", condition);
         builder
             .request_value_type()
             .await
@@ -97,12 +95,12 @@ impl ParameterBuilder {
     async fn request_name() -> String {
         loop {
             let result =
-                InputReader::request_user_input::<InputString, FgColorDisplay<Green, &str>>(
+                InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(
                     &"Enter parameter name:".green(),
                 )
                 .await
                 .map_err(|error| error.to_string())
-                .and_then(|name| Parts::validate_name(name.0).map_err(|e| e.to_string()));
+                .and_then(|name| Parts::validate_name(name).map_err(|e| e.to_string()));
 
             match result {
                 Ok(name) => {
@@ -118,8 +116,7 @@ impl ParameterBuilder {
     async fn request_description(self) -> ParameterBuilder {
         self.and_then(
             "Enter description (Optional):",
-            |parts, value: InputString| {
-                let description = value.0;
+            |parts, description| {
                 parts.description = if description.is_empty() {
                     None
                 } else {
@@ -146,8 +143,8 @@ impl ParameterBuilder {
     }
 
     async fn request_default_value(self) -> ParameterBuilder {
-        self.and_then("Enter default value:", |parts, value: InputString| {
-            parts.set_default_value(value.0).map_err(Error::new)
+        self.and_then("Enter default value:", |parts, value| {
+            parts.set_default_value(value).map_err(Error::new)
         })
         .await
     }
@@ -180,14 +177,11 @@ impl ParameterBuilder {
     async fn request_value_for_condition(self, condition_name: &str) -> ParameterBuilder {
         let message = format!("Enter value for {} condition:", &condition_name);
         let valid_value = loop {
-            let result = InputReader::request_user_input::<
-                InputString,
-                FgColorDisplay<Green, String>,
-            >(&message.green())
+            let result = InputReader::request_user_input_string::<FgColorDisplay<Green, String>>(&message.green())
             .await
             .map_err(|e| e.to_string())
             .and_then(|value| {
-                Parts::validate_value(value.0, &self.parts.value_type).map_err(|e| e.to_string())
+                Parts::validate_value(value, &self.parts.value_type).map_err(|e| e.to_string())
             });
 
             match result {
@@ -227,17 +221,16 @@ impl ParameterBuilder {
     ) -> Option<Condition> {
         let label = "Write condition name:".green();
         let name = loop {
-            let name = InputReader::request_user_input::<InputString, FgColorDisplay<Green, &str>>(&label)
+            let name = InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(&label)
                 .await
-                .unwrap()
-                .0;
+                .unwrap();
             if existing_conditions.iter().find(|cond| cond.name == name).is_some() {
                 warn!("Condition with name {} already exists.", name);
             } else {
                 break name;
             }
         };
-        let expression = ConditionListItem::select_condition(app_ids).await;
+        let expression = condition_builder::build_condition(app_ids).await;
         expression.map(|expression| Condition {
             name,
             expression,
@@ -245,14 +238,13 @@ impl ParameterBuilder {
         })
     }
 
-    async fn and_then<F, P>(self, request_msg: &'static str, parts_modifier: F) -> ParameterBuilder
+    async fn and_then<F>(self, request_msg: &'static str, parts_modifier: F) -> ParameterBuilder
     where
-        F: Fn(&mut Parts, P) -> Result<()>,
-        P: TryFrom<String, Error = Error>,
+        F: Fn(&mut Parts, String) -> Result<()>,
     {
         let mut parts = self.parts;
         loop {
-            let result = InputReader::request_user_input::<P, FgColorDisplay<Green, &str>>(
+            let result = InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(
                 &request_msg.green(),
             )
             .await

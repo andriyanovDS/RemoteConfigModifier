@@ -4,7 +4,7 @@ use super::conditions::{
     AppIdCondition, AppVersionCondition, DeviceCountryCondition, DeviceDateTimeCondition,
     DeviceLanguageCondition, DeviceOSCondition, UserPropertyCondition,
 };
-use crate::io::{InputReader, InputString};
+use crate::io::InputReader;
 use enum_iterator::IntoEnumIterator;
 
 const ALL_BINARY_OPERATORS: [BinaryOperator; 6] = [
@@ -34,25 +34,25 @@ pub enum ConditionListItem {
     DeviceOS,
 }
 
-impl ConditionListItem {
-    pub async fn select_condition(app_ids: &[String]) -> Option<String> {
-        let items = ConditionListItem::into_enum_iter().map(Into::into);
-        println!();
-        let index =
-            InputReader::request_select_item_in_list("Select condition:", items, None, true).await;
-        match index {
-            Some(index) => {
-                let item = ConditionListItem::into_enum_iter()
-                    .nth(index)
-                    .unwrap()
-                    .clone();
-                Some(item.build(app_ids).await)
-            }
-            None => None,
+pub async fn build_condition(app_ids: &[String]) -> Option<String> {
+    let items = ConditionListItem::into_enum_iter().map(Into::into);
+    println!();
+    let index =
+        InputReader::request_select_item_in_list("Select condition:", items, None, true).await;
+    match index {
+        Some(index) => {
+            let item = ConditionListItem::into_enum_iter()
+                .nth(index)
+                .unwrap()
+                .clone();
+            Some(item.build(app_ids).await)
         }
+        None => None,
     }
+}
 
-    pub async fn build(self, app_ids: &[String]) -> String {
+impl ConditionListItem {
+    async fn build(self, app_ids: &[String]) -> String {
         match self {
             Self::AppId => {
                 let value = select_app_id(app_ids).await;
@@ -243,17 +243,13 @@ where
 
 async fn select_single_condition_value(label: &str) -> String {
     let title = format!("Enter {}:", label);
-    InputReader::request_user_input::<InputString, str>(&title)
-        .await
-        .unwrap()
-        .0
+    InputReader::request_user_input_string::<str>(&title).await.unwrap()
 }
 
 async fn select_multiple_condition_values(label: &str) -> Vec<String> {
-    let title = format!("Enter {}:", label);
-    let input = InputReader::request_user_input::<InputString, str>(&title)
+    let title = format!("Enter {} separated by the comma:", label);
+    let input = InputReader::request_user_input_string::<str>(&title)
         .await
-        .unwrap()
-        .0;
+        .unwrap();
     input.split(",").map(|v| v.trim().to_string()).collect()
 }

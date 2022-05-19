@@ -6,8 +6,6 @@ use tokio::io::AsyncBufReadExt;
 use tracing::warn;
 
 pub struct InputReader;
-
-pub struct InputString(pub(crate) String);
 struct InputUInt(usize);
 
 impl InputReader {
@@ -16,10 +14,21 @@ impl InputReader {
         R: TryFrom<String, Error = Error>,
         M: Display + ?Sized,
     {
-        println!("  {}", request_msg);
-        print!("> ");
-        std::io::stdout().flush()?;
+        InputReader::print_msg(request_msg)?;
+        Self::wait_for_input()
+            .await
+            .and_then(R::try_from)
+    }
+
+    pub async fn request_user_input_string<M>(request_msg: &M) -> Result<String> where M: Display + ?Sized {
+        InputReader::print_msg(request_msg)?;
         Self::wait_for_input().await
+    }
+
+    fn print_msg<M>(message: &M) -> Result<()> where M: Display + ?Sized {
+        println!("  {}", message);
+        print!("> ");
+        std::io::stdout().flush().map_err(Into::into)
     }
 
     pub async fn ask_confirmation<M>(confirmation_msg: &M) -> bool
@@ -27,9 +36,9 @@ impl InputReader {
         M: Display + ?Sized,
     {
         loop {
-            let result = Self::request_user_input::<InputString, M>(confirmation_msg)
+            let result = Self::request_user_input_string::<M>(confirmation_msg)
                 .await
-                .map(|answer| answer.0.to_lowercase());
+                .map(|answer| answer.to_lowercase());
 
             match result.as_ref().map(|v| v.as_ref()) {
                 Ok("y" | "yes") => {
@@ -75,10 +84,7 @@ impl InputReader {
         }
     }
 
-    async fn wait_for_input<R>() -> Result<R>
-    where
-        R: TryFrom<String, Error = Error>,
-    {
+    async fn wait_for_input() -> Result<String> {
         let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
         let mut buffer = String::new();
         reader
@@ -89,14 +95,6 @@ impl InputReader {
                 buffer.pop();
                 buffer
             })
-            .and_then(R::try_from)
-    }
-}
-
-impl TryFrom<String> for InputString {
-    type Error = Error;
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        Ok(Self(value))
     }
 }
 

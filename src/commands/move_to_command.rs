@@ -1,7 +1,7 @@
 use crate::commands::command::Command;
 use crate::config::Project;
 use crate::error::Result;
-use crate::io::{InputReader, InputString};
+use crate::io::InputReader;
 use crate::network::NetworkService;
 use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
 use async_trait::async_trait;
@@ -115,18 +115,18 @@ impl MoveToCommand {
 
     async fn create_new_group_name() -> Result<(String, Option<String>)> {
         let provide_name_msg = "Enter group name: ".green();
-        let name = InputReader::request_user_input::<InputString, ColoredString>(&provide_name_msg)
+        let name = InputReader::request_user_input_string::<ColoredString>(&provide_name_msg)
             .await?;
         let provide_description_msg = "Enter group description (Optional):".green();
         let description =
-            InputReader::request_user_input::<InputString, ColoredString>(&provide_description_msg)
+            InputReader::request_user_input_string::<ColoredString>(&provide_description_msg)
                 .await?;
-        let description = if description.0.is_empty() {
+        let description = if description.is_empty() {
             None
         } else {
-            Some(description.0)
+            Some(description)
         };
-        Ok((name.0, description))
+        Ok((name, description))
     }
 
     async fn known_group_flow(

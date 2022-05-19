@@ -6,20 +6,8 @@ use tokio::io::AsyncBufReadExt;
 use tracing::warn;
 
 pub struct InputReader;
-struct InputUInt(usize);
 
 impl InputReader {
-    pub async fn request_user_input<R, M>(request_msg: &M) -> Result<R>
-    where
-        R: TryFrom<String, Error = Error>,
-        M: Display + ?Sized,
-    {
-        InputReader::print_msg(request_msg)?;
-        Self::wait_for_input()
-            .await
-            .and_then(R::try_from)
-    }
-
     pub async fn request_user_input_string<M>(request_msg: &M) -> Result<String> where M: Display + ?Sized {
         InputReader::print_msg(request_msg)?;
         Self::wait_for_input().await
@@ -95,14 +83,5 @@ impl InputReader {
                 buffer.pop();
                 buffer
             })
-    }
-}
-
-impl TryFrom<String> for InputUInt {
-    type Error = Error;
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        value.parse::<usize>().map(InputUInt).map_err(|_| Error {
-            message: format!("Failed to parse {} to the number", &value),
-        })
     }
 }

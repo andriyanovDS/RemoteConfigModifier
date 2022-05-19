@@ -94,7 +94,7 @@ impl Command for UpdateCommand {
         let (name, parameter) = ParameterBuilder::start_flow(
             Some(std::mem::take(&mut self.name)),
             description,
-            &config.conditions,
+            &mut config.conditions,
             &project.app_ids,
         )
         .await;
@@ -107,7 +107,7 @@ impl Command for UpdateCommand {
         let main_project = projects.first().unwrap();
         let network_service = self.network_service.as_mut().unwrap();
         info!("Running for {} project", &main_project.name);
-        let response = network_service.get_remote_config(main_project).await?;
+        let mut response = network_service.get_remote_config(main_project).await?;
         let source = self.find_parameter_source(&response.data);
 
         if source.is_none() {
@@ -118,7 +118,7 @@ impl Command for UpdateCommand {
         let (name, parameter) = ParameterBuilder::start_flow(
             Some(std::mem::take(&mut self.name)),
             description,
-            &response.data.conditions,
+            &mut response.data.conditions,
             &main_project.app_ids,
         )
         .await;

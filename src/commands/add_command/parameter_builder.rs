@@ -1,4 +1,4 @@
-use super::condition_builder;
+use super::expression_builder;
 use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::remote_config::{Condition, Parameter, ParameterValue, ParameterValueType, TagColor};
@@ -38,7 +38,7 @@ impl ParameterBuilder {
     pub async fn start_flow(
         name: Option<String>,
         description: Option<String>,
-        conditions: &[Condition],
+        conditions: &mut Vec<Condition>,
         app_ids: &[String],
     ) -> (String, Parameter) {
         let name = match name.map(Parts::validate_name).transpose() {
@@ -75,7 +75,7 @@ impl ParameterBuilder {
             .await
             .request_default_value()
             .await
-            .request_condition(conditions)
+            .request_condition(conditions, app_ids)
             .await
             .parts
             .parameter()
@@ -145,12 +145,19 @@ impl ParameterBuilder {
         .await
     }
 
-    async fn request_condition(self, conditions: &[Condition]) -> ParameterBuilder {
+    async fn request_condition(
+        self,
+        conditions: &mut Vec<Condition>,
+        app_ids: &[String],
+    ) -> ParameterBuilder {
         if conditions.is_empty() {
             return self;
         }
         let message = format!("{}", "Do you want to add conditional value? [Y,n]".green());
-        match self.request_select_condition(&message, conditions).await {
+        match self
+            .request_select_condition(&message, conditions, app_ids)
+            .await
+        {
             None => self,
             Some(index) => {
                 let condition_name = &conditions[index].name;
@@ -159,8 +166,9 @@ impl ParameterBuilder {
                     "{}",
                     "Do you want to add additional conditional value? [Y,n]".green()
                 );
-                while let Some(selected_index) =
-                    builder.request_select_condition(&message, conditions).await
+                while let Some(selected_index) = builder
+                    .request_select_condition(&message, conditions, app_ids)
+                    .await
                 {
                     let condition_name = &conditions[selected_index].name;
                     builder = builder.request_value_for_condition(condition_name).await;
@@ -200,16 +208,30 @@ impl ParameterBuilder {
     async fn request_select_condition(
         &self,
         message: &str,
-        conditions: &[Condition],
+        conditions: &mut Vec<Condition>,
+        app_ids: &[String],
     ) -> Option<usize> {
         if !InputReader::ask_confirmation(message).await {
             return None;
         }
         let condition_names = conditions.iter().map(|cond| cond.name.as_str());
-        let custom_option = Some("Create new condition");
+        let custom_option = Some("Create a new condition");
         let label = "Select one of available conditions:";
         println!();
-        InputReader::request_select_item_in_list(label, condition_names, custom_option, true).await
+        let index =
+            InputReader::request_select_item_in_list(label, condition_names, custom_option, true)
+                .await;
+        if index.map(|index| index < conditions.len()).unwrap_or(true) {
+            return index;
+        }
+        let condition = self.create_new_condition(conditions, app_ids).await;
+        match condition {
+            Some(condition) => {
+                conditions.push(condition);
+                Some(conditions.len() - 1)
+            }
+            None => None,
+        }
     }
 
     async fn create_new_condition(
@@ -233,7 +255,7 @@ impl ParameterBuilder {
                 break name;
             }
         };
-        let expression = condition_builder::build_condition(app_ids).await;
+        let expression = expression_builder::build_expression(app_ids).await;
         expression.map(|expression| Condition {
             name,
             expression,

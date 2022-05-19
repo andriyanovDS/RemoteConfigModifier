@@ -115,8 +115,8 @@ impl MoveToCommand {
 
     async fn create_new_group_name() -> Result<(String, Option<String>)> {
         let provide_name_msg = "Enter group name: ".green();
-        let name = InputReader::request_user_input_string::<ColoredString>(&provide_name_msg)
-            .await?;
+        let name =
+            InputReader::request_user_input_string::<ColoredString>(&provide_name_msg).await?;
         let provide_description_msg = "Enter group description (Optional):".green();
         let description =
             InputReader::request_user_input_string::<ColoredString>(&provide_description_msg)

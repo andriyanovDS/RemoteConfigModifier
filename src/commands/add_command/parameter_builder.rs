@@ -94,13 +94,12 @@ impl ParameterBuilder {
 
     async fn request_name() -> String {
         loop {
-            let result =
-                InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(
-                    &"Enter parameter name:".green(),
-                )
-                .await
-                .map_err(|error| error.to_string())
-                .and_then(|name| Parts::validate_name(name).map_err(|e| e.to_string()));
+            let result = InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(
+                &"Enter parameter name:".green(),
+            )
+            .await
+            .map_err(|error| error.to_string())
+            .and_then(|name| Parts::validate_name(name).map_err(|e| e.to_string()));
 
             match result {
                 Ok(name) => {
@@ -114,17 +113,14 @@ impl ParameterBuilder {
     }
 
     async fn request_description(self) -> ParameterBuilder {
-        self.and_then(
-            "Enter description (Optional):",
-            |parts, description| {
-                parts.description = if description.is_empty() {
-                    None
-                } else {
-                    Some(description)
-                };
-                Ok(())
-            },
-        )
+        self.and_then("Enter description (Optional):", |parts, description| {
+            parts.description = if description.is_empty() {
+                None
+            } else {
+                Some(description)
+            };
+            Ok(())
+        })
         .await
     }
 
@@ -177,7 +173,9 @@ impl ParameterBuilder {
     async fn request_value_for_condition(self, condition_name: &str) -> ParameterBuilder {
         let message = format!("Enter value for {} condition:", &condition_name);
         let valid_value = loop {
-            let result = InputReader::request_user_input_string::<FgColorDisplay<Green, String>>(&message.green())
+            let result = InputReader::request_user_input_string::<FgColorDisplay<Green, String>>(
+                &message.green(),
+            )
             .await
             .map_err(|e| e.to_string())
             .and_then(|value| {
@@ -221,10 +219,15 @@ impl ParameterBuilder {
     ) -> Option<Condition> {
         let label = "Write condition name:".green();
         let name = loop {
-            let name = InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(&label)
-                .await
-                .unwrap();
-            if existing_conditions.iter().find(|cond| cond.name == name).is_some() {
+            let name =
+                InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(&label)
+                    .await
+                    .unwrap();
+            if existing_conditions
+                .iter()
+                .find(|cond| cond.name == name)
+                .is_some()
+            {
                 warn!("Condition with name {} already exists.", name);
             } else {
                 break name;

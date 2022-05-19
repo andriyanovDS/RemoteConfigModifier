@@ -1,9 +1,9 @@
 use super::conditions::AppBuildCondition;
-use super::conditions::{BinaryOperator, SetOperator};
 use super::conditions::{
     AppIdCondition, AppVersionCondition, DeviceCountryCondition, DeviceDateTimeCondition,
     DeviceLanguageCondition, DeviceOSCondition, UserPropertyCondition,
 };
+use super::conditions::{BinaryOperator, SetOperator};
 use crate::io::InputReader;
 use enum_iterator::IntoEnumIterator;
 
@@ -243,7 +243,9 @@ where
 
 async fn select_single_condition_value(label: &str) -> String {
     let title = format!("Enter {}:", label);
-    InputReader::request_user_input_string::<str>(&title).await.unwrap()
+    InputReader::request_user_input_string::<str>(&title)
+        .await
+        .unwrap()
 }
 
 async fn select_multiple_condition_values(label: &str) -> Vec<String> {

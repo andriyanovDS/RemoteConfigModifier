@@ -130,12 +130,15 @@ impl ParameterBuilder {
         let values_iter = list.iter().copied();
         let label = "Select value type:".green().to_string();
         println!();
-        let index = InputReader::request_select_item_in_list(&label, values_iter, None, false)
-            .await
-            .expect("Incorrect index was selected");
-        let value_type = ParameterValueType::from(list[index]);
-        parts.value_type = value_type;
-        ParameterBuilder { parts }
+        let index = InputReader::request_select_item_in_list(&label, values_iter, None).await;
+        match index {
+            Some(index) => {
+                let value_type = ParameterValueType::from(list[index]);
+                parts.value_type = value_type;
+                ParameterBuilder { parts }
+            }
+            None => ParameterBuilder { parts }.request_description().await,
+        }
     }
 
     async fn request_default_value(self) -> ParameterBuilder {
@@ -214,23 +217,21 @@ impl ParameterBuilder {
         if !InputReader::ask_confirmation(message).await {
             return None;
         }
-        let condition_names = conditions.iter().map(|cond| cond.name.as_str());
-        let custom_option = Some("Create a new condition");
-        let label = "Select one of available conditions:";
-        println!();
-        let index =
-            InputReader::request_select_item_in_list(label, condition_names, custom_option, true)
-                .await;
-        if index.map(|index| index < conditions.len()).unwrap_or(true) {
-            return index;
-        }
-        let condition = self.create_new_condition(conditions, app_ids).await;
-        match condition {
-            Some(condition) => {
-                conditions.push(condition);
-                Some(conditions.len() - 1)
+        loop {
+            let condition_names = conditions.iter().map(|cond| cond.name.as_str());
+            let custom_option = Some("Create a new condition");
+            let label = "Select one of available conditions:";
+            println!();
+            let index =
+                InputReader::request_select_item_in_list(label, condition_names, custom_option).await;
+            if index.map(|index| index < conditions.len()).unwrap_or(true) {
+                return index;
             }
-            None => None,
+            let condition = self.create_new_condition(conditions, app_ids).await;
+            if let Some(condition) = condition {
+                conditions.push(condition);
+                return Some(conditions.len() - 1);
+            }
         }
     }
 
@@ -240,27 +241,31 @@ impl ParameterBuilder {
         app_ids: &[String],
     ) -> Option<Condition> {
         let label = "Write condition name:".green();
-        let name = loop {
-            let name =
-                InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(&label)
-                    .await
-                    .unwrap();
-            if existing_conditions
-                .iter()
-                .find(|cond| cond.name == name)
-                .is_some()
-            {
-                warn!("Condition with name {} already exists.", name);
-            } else {
-                break name;
+        loop {
+            let name = loop {
+                let name =
+                    InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(&label)
+                        .await
+                        .unwrap();
+                if existing_conditions
+                    .iter()
+                    .find(|cond| cond.name == name)
+                    .is_some()
+                {
+                    warn!("Condition with name {} already exists.", name);
+                } else {
+                    break name;
+                }
+            };
+            let expression = expression_builder::build_expression(app_ids).await;
+            if let Some(expression) = expression {
+                return Some(Condition {
+                    name,
+                    expression,
+                    tag_color: TagColor::Green,
+                });
             }
-        };
-        let expression = expression_builder::build_expression(app_ids).await;
-        expression.map(|expression| Condition {
-            name,
-            expression,
-            tag_color: TagColor::Green,
-        })
+        }
     }
 
     async fn and_then<F>(self, request_msg: &'static str, parts_modifier: F) -> ParameterBuilder

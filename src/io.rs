@@ -63,7 +63,6 @@ impl InputReader {
         label: &str,
         list: impl Iterator<Item = &'a str>,
         custom_option: Option<&str>,
-        can_go_back: bool,
     ) -> Option<usize> {
         let mut menu_items: Vec<_> = std::iter::once(terminal_menu::label(label))
             .chain(list.map(button))
@@ -72,16 +71,14 @@ impl InputReader {
         if let Some(option) = custom_option {
             menu_items.push(button(option));
         }
-        if can_go_back {
-            menu_items.push(button("Or Go back"));
-        }
+        menu_items.push(button("Or Go back"));
 
         let items_len = menu_items.len();
         let menu = menu(menu_items);
         run(&menu);
         let selected_index = mut_menu(&menu).selected_item_index();
 
-        if can_go_back && selected_index == items_len - 1 {
+        if selected_index == items_len - 1 {
             None
         } else {
             Some(selected_index - 1)

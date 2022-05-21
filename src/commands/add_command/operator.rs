@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Write};
 
 pub trait Operator: Display {
     type Item;
@@ -71,9 +71,21 @@ impl Into<&'static str> for &SetOperator {
 impl Operator for SetOperator {
     type Item = Vec<String>;
     fn to_condition(&self, condition_name: &str, value: &Self::Item) -> String {
+        let value = match value.first() {
+            None => String::new(),
+            Some(first) => {
+                let mut result = String::with_capacity(value.len() * first.len() + value.len() * 3);
+                write!(&mut result, "'{}'", first).unwrap();
+                value.iter().skip(1).for_each(|item| {
+                    result.push_str(",");
+                    write!(&mut result, "'{}'", item).unwrap();
+                });
+                result
+            }
+        };
         match self {
-            Self::In => format!("{} {} {:?}", condition_name, self, value),
-            _ => format!("{}.{}({:?})", condition_name, self, value),
+            Self::In => format!("{} {} [{}]", condition_name, self, value),
+            _ => format!("{}.{}([{}])", condition_name, self, value),
         }
     }
 }

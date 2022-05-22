@@ -2,19 +2,17 @@ use super::operator::{BinaryOperator, Operator, SetOperator};
 use crate::io::InputReader;
 use enum_iterator::IntoEnumIterator;
 
-const ALL_BINARY_OPERATORS: [BinaryOperator; 6] = [
-    BinaryOperator::Less,
-    BinaryOperator::LessEq,
-    BinaryOperator::Eq,
-    BinaryOperator::BangEq,
-    BinaryOperator::More,
-    BinaryOperator::MoreEq,
-];
-const SET_OPERATORS_WITHOUT_IN: [SetOperator; 4] = [
+const ALL_SET_OPERATORS_EXCEPT_IN: [SetOperator; 10] = [
     SetOperator::Contains,
     SetOperator::NotContains,
     SetOperator::Matches,
     SetOperator::ExactlyMatches,
+    SetOperator::Binary(BinaryOperator::Less),
+    SetOperator::Binary(BinaryOperator::LessEq),
+    SetOperator::Binary(BinaryOperator::Eq),
+    SetOperator::Binary(BinaryOperator::BangEq),
+    SetOperator::Binary(BinaryOperator::More),
+    SetOperator::Binary(BinaryOperator::MoreEq),
 ];
 
 pub async fn build_expression(app_ids: &[String]) -> Option<String> {
@@ -104,14 +102,14 @@ impl ExpressionListItem {
                 let app_id_expr = build_app_id_expr(app_ids).await?;
                 let expression =
                     select_from_different_operators("app.build", "app build", "app builds").await?;
-                Some(format!("{} && {}", app_id_expr, expression))
+                Some(format!("{} && {}", app_id_expr, expression.to_string()))
             }
             Self::AppVersion => {
                 let app_id_expr = build_app_id_expr(app_ids).await?;
                 let expression =
                     select_from_different_operators("app.version", "app version", "app versions")
                         .await?;
-                Some(format!("{} && {}", app_id_expr, expression))
+                Some(format!("{} && {}", app_id_expr, expression.to_string()))
             }
             Self::UserProperty => {
                 let app_id_expr = build_app_id_expr(app_ids).await?;
@@ -121,7 +119,7 @@ impl ExpressionListItem {
                     "user properties",
                 )
                 .await?;
-                Some(format!("{} && {}", app_id_expr, expression))
+                Some(format!("{} && {}", app_id_expr, expression.to_string()))
             }
         }
     }
@@ -149,12 +147,6 @@ impl<O: Operator> ToString for Expression<O> {
 }
 
 async fn build_app_id_expr(app_ids: &[String]) -> Option<String> {
-    select_app_id(app_ids)
-        .await
-        .map(|app_id| format!("app.id == '{}'", app_id))
-}
-
-async fn select_app_id(app_ids: &[String]) -> Option<String> {
     if app_ids.len() == 1 {
         return Some(app_ids[0].clone());
     }
@@ -162,39 +154,34 @@ async fn select_app_id(app_ids: &[String]) -> Option<String> {
     println!();
     InputReader::request_select_item_in_list("Select App ID:", app_ids_iter, None)
         .await
-        .map(|index| app_ids[index].clone())
+        .map(|index| format!("app.id == '{}'", app_ids[index]))
 }
-
 async fn select_from_different_operators(
     expression_name: &'static str,
     label_for_single_value: &'static str,
     label_for_multiple_values: &'static str,
-) -> Option<String> where {
-    let binary_items = ALL_BINARY_OPERATORS.iter().map(Into::into);
-    let set_items = SET_OPERATORS_WITHOUT_IN.iter().map(Into::into);
-    let operators_iter = binary_items.chain(set_items);
+) -> Option<Expression<SetOperator>> where {
+    let operators = ALL_SET_OPERATORS_EXCEPT_IN.iter().map(Into::into);
     println!();
     let operator_index =
-        InputReader::request_select_item_in_list("Select operator:", operators_iter, None).await;
-    match operator_index {
-        None => None,
-        Some(index) if index < ALL_BINARY_OPERATORS.len() => Some(
-            Expression {
-                name: expression_name,
-                operator: ALL_BINARY_OPERATORS[index].clone(),
-                value: select_single_condition_value(label_for_single_value).await,
-            }
-            .to_string(),
-        ),
-        Some(index) => Some(
-            Expression {
-                name: expression_name,
-                operator: SET_OPERATORS_WITHOUT_IN[index - ALL_BINARY_OPERATORS.len()].clone(),
-                value: select_multiple_condition_values(label_for_multiple_values).await,
-            }
-            .to_string(),
-        ),
+        InputReader::request_select_item_in_list("Select operator:", operators, None).await;
+    if operator_index.is_none() {
+        return None;
     }
+    let operator = ALL_SET_OPERATORS_EXCEPT_IN[operator_index.unwrap()].clone();
+    let value = match operator {
+        SetOperator::Binary(_) => {
+            vec![select_single_condition_value(label_for_single_value).await]
+        }
+        _ => {
+            select_multiple_condition_values(label_for_multiple_values).await
+        }
+    };
+    Some(Expression {
+        name: expression_name,
+        operator,
+        value,
+    })
 }
 
 async fn select_operator<T>(operators: &'static [T]) -> Option<T>

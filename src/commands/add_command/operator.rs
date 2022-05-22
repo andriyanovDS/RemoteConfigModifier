@@ -22,6 +22,7 @@ pub enum SetOperator {
     Matches,
     ExactlyMatches,
     In,
+    Binary(BinaryOperator),
 }
 
 impl Display for BinaryOperator {
@@ -64,6 +65,7 @@ impl Into<&'static str> for &SetOperator {
             SetOperator::Matches => "matches",
             SetOperator::ExactlyMatches => "exactlyMatches",
             SetOperator::In => "in",
+            SetOperator::Binary(binary) => binary.into()
         }
     }
 }

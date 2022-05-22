@@ -7,7 +7,7 @@ use color_eyre::owo_colors::{FgColorDisplay, OwoColorize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::string::String;
-use tracing::warn;
+use tracing::{info, warn};
 
 #[derive(Debug)]
 pub struct ParameterBuilder {
@@ -258,6 +258,7 @@ impl ParameterBuilder {
             };
             let expression = expression_builder::build_expression(app_ids).await;
             if let Some(expression) = expression {
+                info!("Condition '{}' with expression {} was added.", name, expression);
                 return Some(Condition {
                     name,
                     expression,

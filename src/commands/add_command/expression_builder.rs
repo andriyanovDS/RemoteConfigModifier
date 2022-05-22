@@ -1,5 +1,6 @@
 use super::operator::{BinaryOperator, Operator, SetOperator};
 use crate::io::InputReader;
+use crate::error::{Result, Error};
 use color_eyre::owo_colors::OwoColorize;
 use enum_iterator::IntoEnumIterator;
 
@@ -38,6 +39,31 @@ pub async fn build_expression(app_ids: &[String]) -> Option<String> {
             }
         }
     }
+}
+
+pub fn replace_app_id(expression: &mut String, app_ids: &Vec<String>) -> Result<()> {
+    let search_str = "app.id == '";
+    let index = expression.find(search_str);
+    
+    if index.is_none() {
+        return Ok(());
+    }
+    let app_id_start_index = index.unwrap() + search_str.len();
+    let app_id_end_index = expression[app_id_start_index..].find("'").map(|i| i - 1);
+    if app_id_end_index.is_none() {
+        return Ok(());
+    }
+    let app_id_end_index = app_id_end_index.unwrap() + app_id_start_index;
+    let platform = expression[app_id_start_index..app_id_end_index].split(":").nth(2).unwrap();
+    let replacement = app_ids.iter().find(|app_id| {
+        app_id.split(":").nth(2).unwrap() == platform
+    });
+    if replacement.is_none() {
+        let message = format!("App ID for compatible platform {platform} was not found for this project");
+        return Err(Error { message });
+    }
+    expression.replace_range(app_id_start_index..=app_id_end_index, replacement.unwrap());
+    Ok(())
 }
 
 #[derive(IntoEnumIterator)]

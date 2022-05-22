@@ -78,7 +78,7 @@ impl AddCommand {
                 let mut response = self.network_service.get_remote_config(project).await?;
                 response
                     .data
-                    .extend_conditions(&mut selected_conditions, index + 1);
+                    .extend_conditions(&mut selected_conditions, index + 1, &project.app_ids)?;
                 self.add_parameter(
                     name.clone(),
                     parameter.clone(),
@@ -100,7 +100,7 @@ impl AddCommand {
                 let mut response = self.network_service.get_remote_config(project).await?;
                 response
                     .data
-                    .extend_conditions(&mut selected_conditions, index + 1);
+                    .extend_conditions(&mut selected_conditions, index + 1, &project.app_ids)?;
                 self.add_parameter(name, parameter, response, project, is_update)
                     .await?;
             }
@@ -218,7 +218,8 @@ impl RemoteConfig {
         &mut self,
         new_conditions: &mut HashMap<String, GenerationalCondition>,
         generation: usize,
-    ) {
+        app_ids: &Vec<String>,
+    ) -> Result<()> {
         for condition in self.conditions.iter() {
             if let Some(gen_condition) = new_conditions.get_mut(&condition.name) {
                 gen_condition.generation = generation;
@@ -228,8 +229,11 @@ impl RemoteConfig {
             .values()
             .filter(|v| v.generation < generation)
         {
-            self.conditions.push(gen_condition.condition.clone())
+            let mut condition = gen_condition.condition.clone();
+            expression_builder::replace_app_id(&mut condition.expression, app_ids)?;
+            self.conditions.push(condition);
         }
+        Ok(())
     }
 }
 

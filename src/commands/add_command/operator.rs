@@ -65,7 +65,7 @@ impl Into<&'static str> for &SetOperator {
             SetOperator::Matches => "matches",
             SetOperator::ExactlyMatches => "exactlyMatches",
             SetOperator::In => "in",
-            SetOperator::Binary(binary) => binary.into()
+            SetOperator::Binary(binary) => binary.into(),
         }
     }
 }

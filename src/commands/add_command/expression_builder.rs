@@ -1,5 +1,6 @@
 use super::operator::{BinaryOperator, Operator, SetOperator};
 use crate::io::InputReader;
+use color_eyre::owo_colors::OwoColorize;
 use enum_iterator::IntoEnumIterator;
 
 const ALL_SET_OPERATORS_EXCEPT_IN: [SetOperator; 10] = [
@@ -18,7 +19,6 @@ const ALL_SET_OPERATORS_EXCEPT_IN: [SetOperator; 10] = [
 pub async fn build_expression(app_ids: &[String]) -> Option<String> {
     loop {
         let items = ExpressionListItem::into_enum_iter().map(Into::into);
-        println!();
         let index =
             InputReader::request_select_item_in_list("Select condition:", items, None).await;
         if index.is_none() {
@@ -150,8 +150,7 @@ async fn build_app_id_expr(app_ids: &[String]) -> Option<String> {
     if app_ids.len() == 1 {
         return Some(app_ids[0].clone());
     }
-    let app_ids_iter = app_ids.iter().map(|id| id.as_str());
-    println!();
+    let app_ids_iter = app_ids.iter().map(|id| id.split(":").nth(2).unwrap());
     InputReader::request_select_item_in_list("Select App ID:", app_ids_iter, None)
         .await
         .map(|index| format!("app.id == '{}'", app_ids[index]))
@@ -162,7 +161,6 @@ async fn select_from_different_operators(
     label_for_multiple_values: &'static str,
 ) -> Option<Expression<SetOperator>> where {
     let operators = ALL_SET_OPERATORS_EXCEPT_IN.iter().map(Into::into);
-    println!();
     let operator_index =
         InputReader::request_select_item_in_list("Select operator:", operators, None).await;
     if operator_index.is_none() {
@@ -173,9 +171,7 @@ async fn select_from_different_operators(
         SetOperator::Binary(_) => {
             vec![select_single_condition_value(label_for_single_value).await]
         }
-        _ => {
-            select_multiple_condition_values(label_for_multiple_values).await
-        }
+        _ => select_multiple_condition_values(label_for_multiple_values).await,
     };
     Some(Expression {
         name: expression_name,
@@ -196,14 +192,14 @@ where
 }
 
 async fn select_single_condition_value(label: &str) -> String {
-    let title = format!("Enter {}:", label);
+    let title = format!("Enter {}:", label.green());
     InputReader::request_user_input_string::<str>(&title)
         .await
         .unwrap()
 }
 
 async fn select_multiple_condition_values(label: &str) -> Vec<String> {
-    let title = format!("Enter {} separated by the comma:", label);
+    let title = format!("Enter {} separated by the comma:", label.green());
     InputReader::request_user_input_string::<str>(&title)
         .await
         .unwrap()

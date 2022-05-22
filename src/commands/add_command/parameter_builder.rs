@@ -129,7 +129,6 @@ impl ParameterBuilder {
         let list = vec!["Boolean", "Number", "String", "JSON"];
         let values_iter = list.iter().copied();
         let label = "Select value type:".green().to_string();
-        println!();
         let index = InputReader::request_select_item_in_list(&label, values_iter, None).await;
         match index {
             Some(index) => {
@@ -221,9 +220,9 @@ impl ParameterBuilder {
             let condition_names = conditions.iter().map(|cond| cond.name.as_str());
             let custom_option = Some("Create a new condition");
             let label = "Select one of available conditions:";
-            println!();
             let index =
-                InputReader::request_select_item_in_list(label, condition_names, custom_option).await;
+                InputReader::request_select_item_in_list(label, condition_names, custom_option)
+                    .await;
             if index.map(|index| index < conditions.len()).unwrap_or(true) {
                 return index;
             }

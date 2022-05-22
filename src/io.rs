@@ -1,4 +1,5 @@
 use crate::error::{Error, Result};
+use color_eyre::owo_colors::OwoColorize;
 use std::fmt::Display;
 use std::io::Write;
 use terminal_menu::{button, menu, mut_menu, run};
@@ -64,24 +65,30 @@ impl InputReader {
         list: impl Iterator<Item = &'a str>,
         custom_option: Option<&str>,
     ) -> Option<usize> {
-        let mut menu_items: Vec<_> = std::iter::once(terminal_menu::label(label))
+        let label = label.green().to_string();
+        let mut menu_items: Vec<_> = std::iter::once(terminal_menu::label(""))
+            .chain(std::iter::once(terminal_menu::label(&label)))
             .chain(list.map(button))
             .collect();
 
         if let Some(option) = custom_option {
             menu_items.push(button(option));
         }
-        menu_items.push(button("Or Go back"));
+        menu_items.push(button("Go back"));
 
         let items_len = menu_items.len();
         let menu = menu(menu_items);
         run(&menu);
-        let selected_index = mut_menu(&menu).selected_item_index();
+        let menu = mut_menu(&menu);
+        let selected_index = menu.selected_item_index();
 
         if selected_index == items_len - 1 {
             None
         } else {
-            Some(selected_index - 1)
+            let selected_item_name = menu.selected_item_name();
+            print!("  {}", label);
+            println!("\n> {}", selected_item_name);
+            Some(selected_index - 2)
         }
     }
 }

@@ -258,7 +258,10 @@ impl ParameterBuilder {
             };
             let expression = expression_builder::build_expression(app_ids).await;
             if let Some(expression) = expression {
-                info!("Condition '{}' with expression {} was added.", name, expression);
+                info!(
+                    "Condition '{}' with expression {} was added.",
+                    name, expression
+                );
                 return Some(Condition {
                     name,
                     expression,

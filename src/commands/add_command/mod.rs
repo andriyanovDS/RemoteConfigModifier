@@ -76,9 +76,11 @@ impl AddCommand {
             for (index, project) in projects_iter {
                 info!("Running for {} project", &project.name);
                 let mut response = self.network_service.get_remote_config(project).await?;
-                response
-                    .data
-                    .extend_conditions(&mut selected_conditions, index + 1, &project.app_ids)?;
+                response.data.extend_conditions(
+                    &mut selected_conditions,
+                    index + 1,
+                    &project.app_ids,
+                )?;
                 self.add_parameter(
                     name.clone(),
                     parameter.clone(),
@@ -98,9 +100,11 @@ impl AddCommand {
                     .map(|(name, _)| name.as_str());
                 let (name, parameter) = builder.add_values(selected_condition_names).await?;
                 let mut response = self.network_service.get_remote_config(project).await?;
-                response
-                    .data
-                    .extend_conditions(&mut selected_conditions, index + 1, &project.app_ids)?;
+                response.data.extend_conditions(
+                    &mut selected_conditions,
+                    index + 1,
+                    &project.app_ids,
+                )?;
                 self.add_parameter(name, parameter, response, project, is_update)
                     .await?;
             }

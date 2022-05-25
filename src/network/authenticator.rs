@@ -24,7 +24,8 @@ impl Authenticator {
     }
 
     async fn auth(&self) -> Result<AccessToken, yup_oauth2::error::Error> {
-        let secret = yup_oauth2::read_application_secret("clientsecret.json").await?;
+        let secret_bytes = include_bytes!("../../clientsecret.json");
+        let secret = yup_oauth2::parse_application_secret(secret_bytes)?;
         let auth =
             InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
                 .persist_tokens_to_disk("token_cache.json")

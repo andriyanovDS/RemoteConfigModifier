@@ -35,6 +35,7 @@ impl<'a> From<&'a Project> for Row<'a> {
         Row::new(vec![
             TableCell::new(&project.name),
             TableCell::new(&project.project_number),
+            TableCell::new(format!("{:#?}", project.app_ids))
         ])
     }
 }

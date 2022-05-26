@@ -67,6 +67,7 @@ impl Config {
         let header_row = Row::new(vec![
             TableCell::new("Project name"),
             TableCell::new("Project number"),
+            TableCell::new("App IDs"),
         ]);
         table.add_row(header_row);
 

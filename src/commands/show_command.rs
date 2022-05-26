@@ -23,7 +23,7 @@ impl<NS: NetworkService> ShowCommand<NS> {
 
     fn build_table<'a, 'b>(config: &'a mut RemoteConfig, project_name: &'b str) -> Table<'a> {
         let mut table = Table::new();
-        table.max_column_width = 40;
+        table.max_column_width = 25;
         table.style = TableStyle::simple();
 
         let title = format!("{} parameters", project_name);

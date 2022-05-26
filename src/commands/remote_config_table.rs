@@ -38,7 +38,7 @@ impl Parameter {
     pub fn preview(&self, name: &str, title: &str, group_name: Option<&str>) {
         let mut table = Table::new();
         table.style = TableStyle::simple();
-        table.max_column_width = 40;
+        table.max_column_width = 25;
 
         let title_label = Row::new(vec![TableCell::new_with_alignment(
             title,

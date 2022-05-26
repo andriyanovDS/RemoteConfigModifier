@@ -201,7 +201,7 @@ impl RemoteConfig {
         &mut self,
         new_conditions: &mut HashMap<String, GenerationalCondition>,
         generation: usize,
-        app_ids: &Vec<String>,
+        app_ids: &[String],
     ) -> Result<()> {
         for condition in self.conditions.iter() {
             if let Some(gen_condition) = new_conditions.get_mut(&condition.name) {

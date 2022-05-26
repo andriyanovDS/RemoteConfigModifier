@@ -29,7 +29,7 @@ impl ConfigCommand {
                 let project = Project::new(
                     data.name,
                     data.project_number,
-                    data.app_ids.unwrap_or(Vec::new()),
+                    data.app_ids.unwrap_or_default(),
                 );
                 let config = self.config_file.add_project(project)?;
                 config.render(None);

@@ -31,9 +31,9 @@ impl Display for BinaryOperator {
     }
 }
 
-impl Into<&'static str> for &BinaryOperator {
-    fn into(self) -> &'static str {
-        match self {
+impl From<&BinaryOperator> for &'static str {
+    fn from(operator: &BinaryOperator) -> &'static str {
+        match operator {
             BinaryOperator::Less => "<",
             BinaryOperator::LessEq => "<=",
             BinaryOperator::Eq => "==",
@@ -57,9 +57,9 @@ impl Display for SetOperator {
     }
 }
 
-impl Into<&'static str> for &SetOperator {
-    fn into(self) -> &'static str {
-        match self {
+impl From<&SetOperator> for &'static str {
+    fn from(operator: &SetOperator) -> &'static str {
+        match operator {
             SetOperator::Contains => "contains",
             SetOperator::NotContains => "notContains",
             SetOperator::Matches => "matches",
@@ -79,7 +79,7 @@ impl Operator for SetOperator {
                 let mut result = String::with_capacity(value.len() * first.len() + value.len() * 3);
                 write!(&mut result, "'{}'", first).unwrap();
                 value.iter().skip(1).for_each(|item| {
-                    result.push_str(",");
+                    result.push(',');
                     write!(&mut result, "'{}'", item).unwrap();
                 });
                 result

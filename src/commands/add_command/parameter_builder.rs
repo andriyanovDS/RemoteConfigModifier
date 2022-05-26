@@ -246,11 +246,7 @@ impl ParameterBuilder {
                     InputReader::request_user_input_string::<FgColorDisplay<Green, &str>>(&label)
                         .await
                         .unwrap();
-                if existing_conditions
-                    .iter()
-                    .find(|cond| cond.name == name)
-                    .is_some()
-                {
+                if existing_conditions.iter().any(|cond| cond.name == name) {
                     warn!("Condition with name {} already exists.", name);
                 } else {
                     break name;

@@ -21,12 +21,9 @@ pub async fn build_expression(app_ids: &[String]) -> Option<String> {
     loop {
         let items = ExpressionListItem::into_enum_iter().map(Into::into);
         let index =
-            InputReader::request_select_item_in_list("Select condition:", items, None).await;
-        if index.is_none() {
-            return None;
-        }
+            InputReader::request_select_item_in_list("Select condition:", items, None).await?;
         let expression = ExpressionListItem::into_enum_iter()
-            .nth(index.unwrap())
+            .nth(index)
             .unwrap()
             .build(app_ids)
             .await;
@@ -41,7 +38,7 @@ pub async fn build_expression(app_ids: &[String]) -> Option<String> {
     }
 }
 
-pub fn replace_app_id(expression: &mut String, app_ids: &Vec<String>) -> Result<()> {
+pub fn replace_app_id(expression: &mut String, app_ids: &[String]) -> Result<()> {
     let search_str = "app.id == '";
     let index = expression.find(search_str);
 
@@ -49,18 +46,18 @@ pub fn replace_app_id(expression: &mut String, app_ids: &Vec<String>) -> Result<
         return Ok(());
     }
     let app_id_start_index = index.unwrap() + search_str.len();
-    let app_id_end_index = expression[app_id_start_index..].find("'").map(|i| i - 1);
+    let app_id_end_index = expression[app_id_start_index..].find('\'').map(|i| i - 1);
     if app_id_end_index.is_none() {
         return Ok(());
     }
     let app_id_end_index = app_id_end_index.unwrap() + app_id_start_index;
     let platform = expression[app_id_start_index..app_id_end_index]
-        .split(":")
+        .split(':')
         .nth(2)
         .unwrap();
     let replacement = app_ids
         .iter()
-        .find(|app_id| app_id.split(":").nth(2).unwrap() == platform);
+        .find(|app_id| app_id.split(':').nth(2).unwrap() == platform);
     if replacement.is_none() {
         let message =
             format!("App ID for compatible platform {platform} was not found for this project");
@@ -155,9 +152,9 @@ impl ExpressionListItem {
     }
 }
 
-impl<'a> Into<&'static str> for ExpressionListItem {
-    fn into(self) -> &'static str {
-        match self {
+impl<'a> From<ExpressionListItem> for &'static str {
+    fn from(item: ExpressionListItem) -> &'static str {
+        match item {
             ExpressionListItem::AppBuild => "App build",
             ExpressionListItem::AppVersion => "App version",
             ExpressionListItem::UserProperty => "User property",
@@ -172,7 +169,7 @@ impl<'a> Into<&'static str> for ExpressionListItem {
 
 impl<O: Operator> ToString for Expression<O> {
     fn to_string(&self) -> String {
-        self.operator.to_condition(&self.name, &self.value)
+        self.operator.to_condition(self.name, &self.value)
     }
 }
 
@@ -180,7 +177,7 @@ async fn build_app_id_expr(app_ids: &[String]) -> Option<String> {
     if app_ids.len() == 1 {
         return Some(app_ids[0].clone());
     }
-    let app_ids_iter = app_ids.iter().map(|id| id.split(":").nth(2).unwrap());
+    let app_ids_iter = app_ids.iter().map(|id| id.split(':').nth(2).unwrap());
     InputReader::request_select_item_in_list("Select App ID:", app_ids_iter, None)
         .await
         .map(|index| format!("app.id == '{}'", app_ids[index]))
@@ -192,11 +189,8 @@ async fn select_from_different_operators(
 ) -> Option<Expression<SetOperator>> where {
     let operators = ALL_SET_OPERATORS_EXCEPT_IN.iter().map(Into::into);
     let operator_index =
-        InputReader::request_select_item_in_list("Select operator:", operators, None).await;
-    if operator_index.is_none() {
-        return None;
-    }
-    let operator = ALL_SET_OPERATORS_EXCEPT_IN[operator_index.unwrap()].clone();
+        InputReader::request_select_item_in_list("Select operator:", operators, None).await?;
+    let operator = ALL_SET_OPERATORS_EXCEPT_IN[operator_index].clone();
     let value = match operator {
         SetOperator::Binary(_) => {
             vec![select_single_condition_value(label_for_single_value).await]
@@ -233,7 +227,7 @@ async fn select_multiple_condition_values(label: &str) -> Vec<String> {
     InputReader::request_user_input_string::<str>(&title)
         .await
         .unwrap()
-        .split(",")
+        .split(',')
         .map(|v| v.trim().to_string())
         .collect()
 }

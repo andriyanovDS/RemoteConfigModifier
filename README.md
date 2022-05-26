@@ -48,7 +48,7 @@ It's also possible to add single project using command line.
 Run `config add` subcommand with required `-n | --name` and `--project_number`
 and optional `-a | --app_ids` arguments
 ```shell
-rcm config add -n=project_name -a=[app_id] --project_number=project_number
+rcm config add -n=project_name --project_number=project_number -a first_app_id -a second_app_id
 ```
 To remove project run `config rm proejct_name` subcommand.
 To view stored projects run `config show` subcommand with optional `-n | --name` argument.

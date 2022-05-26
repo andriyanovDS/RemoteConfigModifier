@@ -20,7 +20,7 @@ impl ConfigFile {
     }
 
     pub fn add_project(&self, project: Project) -> Result<Config> {
-        let mut config = self.load()?;
+        let mut config = self.load().unwrap_or_default();
         config.projects.push(project);
         let config_path = self.configuration_file_path()?;
         config.store(config_path.as_path())?;

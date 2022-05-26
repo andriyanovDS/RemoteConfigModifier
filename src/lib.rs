@@ -110,7 +110,7 @@ pub struct AddProject {
     #[clap(short, long)]
     pub app_ids: Option<Vec<String>>,
     /// Project description
-    #[clap(long)]
+    #[clap(short, long)]
     pub project_number: String,
 }
 

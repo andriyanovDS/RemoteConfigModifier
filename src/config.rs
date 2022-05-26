@@ -30,6 +30,14 @@ impl Project {
     }
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            projects: Vec::new(),
+        }
+    }
+}
+
 impl<'a> From<&'a Project> for Row<'a> {
     fn from(project: &'a Project) -> Self {
         Row::new(vec![

@@ -25,6 +25,37 @@ cargo install --git https://github.com/andriyanovDS/RemoteConfigModifier.git rcm
 <h2>How to use</h2>
 </a>
 
+### Setup:
+It's required to store configuration JSON with Firebase projects to start using CLI.
+JSON format is the following:
+```typescript
+{
+  "projects": [
+    {
+      "project_number": string,
+      "name": string, // project name will be only used in CLI terminal ouput
+      "app_ids": [string]
+    }
+  ]
+}
+```
+To store config run `config store path_to_config` subcommand
+```shell
+rcm config store ./config.json
+```
+
+It's also possible to add single project using command line.
+Run `config add` subcommand with required `-n | --name` and `--project_number`
+and optional `-a | --app_ids` arguments
+```shell
+rcm config add -n=project_name -a=[app_id] --project_number=project_number
+```
+To remove project run `config rm proejct_name` subcommand.
+To view stored projects run `config show` subcommand with optional `-n | --name` argument.
+```shell
+rcm config show -n=project_name
+```
+
 ### Add parameter:
 To add parameter run `add` subcommand with optional `-n | --name` and `-d | --description` arguments.
 ```shell

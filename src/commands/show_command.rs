@@ -12,15 +12,13 @@ use term_table::{
 };
 use tracing::{error, info};
 
-pub struct ShowCommand {
-    network_service: NetworkService,
+pub struct ShowCommand<NS: NetworkService> {
+    network_service: NS,
 }
 
-impl ShowCommand {
-    pub fn new() -> Self {
-        Self {
-            network_service: NetworkService::new(),
-        }
+impl<NS: NetworkService> ShowCommand<NS> {
+    pub fn new(network_service: NS) -> Self {
+        Self { network_service }
     }
 
     fn build_table<'a, 'b>(config: &'a mut RemoteConfig, project_name: &'b str) -> Table<'a> {
@@ -29,7 +27,7 @@ impl ShowCommand {
         table.style = TableStyle::simple();
 
         let title = format!("{} parameters", project_name);
-        table.add_row(ShowCommand::make_title_row(title));
+        table.add_row(ShowCommand::<NS>::make_title_row(title));
         config
             .parameters
             .iter()
@@ -48,7 +46,7 @@ impl ShowCommand {
             .for_each(|row| table.add_row(row));
 
         if !config.conditions.is_empty() {
-            table.add_row(ShowCommand::make_title_row("Conditions".to_string()));
+            table.add_row(ShowCommand::<NS>::make_title_row("Conditions".to_string()));
             config
                 .conditions
                 .iter_mut()
@@ -68,11 +66,11 @@ impl ShowCommand {
 }
 
 #[async_trait]
-impl Command for ShowCommand {
+impl<NS: NetworkService + Send> Command for ShowCommand<NS> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
         let mut response = self.network_service.get_remote_config(project).await?;
-        let table = ShowCommand::build_table(&mut response.data, &project.name);
+        let table = ShowCommand::<NS>::build_table(&mut response.data, &project.name);
         println!("{}", table.render());
         Ok(())
     }
@@ -85,17 +83,11 @@ impl Command for ShowCommand {
                     error!("{}", error.to_string().red());
                 }
                 Ok(mut response) => {
-                    let table = ShowCommand::build_table(&mut response.data, &project.name);
+                    let table = ShowCommand::<NS>::build_table(&mut response.data, &project.name);
                     println!("{}", table.render());
                 }
             }
         }
         Ok(())
-    }
-}
-
-impl Default for ShowCommand {
-    fn default() -> Self {
-        Self::new()
     }
 }

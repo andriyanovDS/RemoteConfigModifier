@@ -1,8 +1,10 @@
+extern crate core;
+
 pub mod commands;
 mod config;
 mod error;
 mod io;
-mod network;
+pub mod network;
 mod remote_config;
 
 use clap::{Args, Parser, Subcommand};

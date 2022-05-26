@@ -7,16 +7,16 @@ use async_trait::async_trait;
 use color_eyre::owo_colors::OwoColorize;
 use tracing::{error, info, warn};
 
-pub struct DeleteCommand {
+pub struct DeleteCommand<NS: NetworkService> {
     name: String,
-    network_service: NetworkService,
+    network_service: NS,
 }
 
-impl<'a> DeleteCommand {
-    pub fn new(name: String) -> Self {
+impl<NS: NetworkService> DeleteCommand<NS> {
+    pub fn new(name: String, network_service: NS) -> Self {
         Self {
             name,
-            network_service: NetworkService::new(),
+            network_service,
         }
     }
 
@@ -46,7 +46,7 @@ impl<'a> DeleteCommand {
 }
 
 #[async_trait]
-impl Command for DeleteCommand {
+impl<NS: NetworkService + Send> Command for DeleteCommand<NS> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         self.run(project).await
     }

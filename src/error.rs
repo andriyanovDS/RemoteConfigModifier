@@ -15,6 +15,12 @@ impl Error {
     }
 }
 
+impl std::error::Error for Error {
+    fn description(&self) -> &str {
+        &self.message
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message)

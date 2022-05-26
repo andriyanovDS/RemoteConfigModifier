@@ -14,35 +14,14 @@ mod expression_builder;
 mod operator;
 pub mod parameter_builder;
 
-pub struct AddCommand {
+pub struct AddCommand<NS: NetworkService> {
     name: Option<String>,
     description: Option<String>,
-    network_service: NetworkService,
-}
-impl Default for AddCommand {
-    fn default() -> Self {
-        Self {
-            name: None,
-            description: None,
-            network_service: NetworkService::new(),
-        }
-    }
+    network_service: NS,
 }
 
-impl AddCommand {
-    pub fn new(name: Option<String>, description: Option<String>) -> Self {
-        Self {
-            name,
-            description,
-            network_service: NetworkService::new(),
-        }
-    }
-
-    pub fn new_with_network_service(
-        name: Option<String>,
-        description: Option<String>,
-        network_service: NetworkService,
-    ) -> Self {
+impl<NS: NetworkService> AddCommand<NS> {
+    pub fn new(name: Option<String>, description: Option<String>, network_service: NS) -> Self {
         Self {
             name,
             description,
@@ -165,7 +144,7 @@ impl AddCommand {
 }
 
 #[async_trait]
-impl Command for AddCommand {
+impl<NS: NetworkService + Send> Command for AddCommand<NS> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
         let mut response = self.network_service.get_remote_config(project).await?;

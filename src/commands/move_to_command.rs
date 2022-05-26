@@ -10,18 +10,18 @@ use colored::{ColoredString, Colorize};
 use std::collections::HashMap;
 use tracing::{error, info, warn};
 
-pub struct MoveToCommand {
+pub struct MoveToCommand<NS: NetworkService> {
     parameter_name: String,
     group_name: Option<String>,
-    network_service: NetworkService,
+    network_service: NS,
 }
 
-impl MoveToCommand {
-    pub fn new(parameter_name: String, group_name: Option<String>) -> Self {
+impl<NS: NetworkService> MoveToCommand<NS> {
+    pub fn new(parameter_name: String, group_name: Option<String>, network_service: NS) -> Self {
         Self {
             parameter_name,
             group_name,
-            network_service: NetworkService::new(),
+            network_service,
         }
     }
 
@@ -94,7 +94,7 @@ impl MoveToCommand {
         config: &mut RemoteConfig,
         parameter: Parameter,
     ) -> Result<()> {
-        let (name, description) = MoveToCommand::create_new_group_name().await?;
+        let (name, description) = MoveToCommand::<NS>::create_new_group_name().await?;
         info!(
             "Parameter {} will be moved to {} group",
             self.parameter_name, &name
@@ -174,7 +174,7 @@ impl MoveToCommand {
 }
 
 #[async_trait]
-impl Command for MoveToCommand {
+impl<NS: NetworkService + Send> Command for MoveToCommand<NS> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         self.run(project).await
     }

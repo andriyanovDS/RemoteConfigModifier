@@ -11,16 +11,16 @@ use color_eyre::owo_colors::OwoColorize;
 use std::collections::HashMap;
 use tracing::{info, warn};
 
-pub struct UpdateCommand {
+pub struct UpdateCommand<NS: NetworkService> {
     name: String,
-    network_service: Option<NetworkService>,
+    network_service: Option<NS>,
 }
 
-impl UpdateCommand {
-    pub fn new(name: String) -> Self {
+impl<NS: NetworkService> UpdateCommand<NS> {
+    pub fn new(name: String, network_service: NS) -> Self {
         Self {
             name,
-            network_service: Some(NetworkService::new()),
+            network_service: Some(network_service),
         }
     }
 
@@ -78,7 +78,7 @@ impl UpdateCommand {
 }
 
 #[async_trait]
-impl Command for UpdateCommand {
+impl<NS: NetworkService + Send> Command for UpdateCommand<NS> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
         let network_service = self.network_service.as_mut().unwrap();
@@ -123,8 +123,7 @@ impl Command for UpdateCommand {
         )
         .await;
 
-        let mut add_command =
-            AddCommand::new_with_network_service(None, None, self.network_service.take().unwrap());
+        let mut add_command = AddCommand::new(None, None, self.network_service.take().unwrap());
         add_command
             .apply_parameter_to_projects(name, parameter, projects, response, true)
             .await

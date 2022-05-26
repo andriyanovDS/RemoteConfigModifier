@@ -1,19 +1,30 @@
+use directories_next::ProjectDirs;
+use std::fs;
 use std::future::Future;
+use std::path::PathBuf;
 use std::pin::Pin;
-use tracing::info;
+use tracing::{debug, info, warn};
 use yup_oauth2::authenticator_delegate::{DefaultInstalledFlowDelegate, InstalledFlowDelegate};
 use yup_oauth2::{AccessToken, InstalledFlowAuthenticator, InstalledFlowReturnMethod};
 
+const TOKEN_CACHE_FILE_NAME: &str = "token_cache.json";
+
 pub struct Authenticator {
     token: Option<AccessToken>,
+    app_name: String,
 }
 
 impl Authenticator {
-    pub fn new() -> Self {
-        Self { token: None }
+    pub fn new(app_name: String) -> Self {
+        Self {
+            token: None,
+            app_name,
+        }
     }
 
-    pub async fn get_access_token(&mut self) -> Result<&AccessToken, yup_oauth2::error::Error> {
+    pub async fn get_access_token(
+        &mut self,
+    ) -> Result<&AccessToken, Box<dyn std::error::Error + Send + Sync>> {
         if self.token.is_some() {
             Ok(self.token.as_ref().unwrap())
         } else {
@@ -23,17 +34,36 @@ impl Authenticator {
         }
     }
 
-    async fn auth(&self) -> Result<AccessToken, yup_oauth2::error::Error> {
+    async fn auth(&self) -> Result<AccessToken, Box<dyn std::error::Error + Send + Sync>> {
         let secret_bytes = include_bytes!("../../clientsecret.json");
         let secret = yup_oauth2::parse_application_secret(secret_bytes)?;
+        let token_file_path = self
+            .token_file_path()
+            .ok_or_else(|| crate::error::Error::new("Failed to store auth token."))?;
+        debug!("Auth token will be saved to {token_file_path:?}");
         let auth =
             InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
-                .persist_tokens_to_disk("token_cache.json")
+                .persist_tokens_to_disk(token_file_path)
                 .flow_delegate(Box::new(FlowDelegate))
                 .build()
                 .await?;
         let scopes = ["https://www.googleapis.com/auth/cloud-platform"];
-        auth.token(&scopes).await
+        auth.token(&scopes).await.map_err(Into::into)
+    }
+
+    fn token_file_path(&self) -> Option<PathBuf> {
+        let directories = ProjectDirs::from("com", "", &self.app_name)?;
+        let cache_dir = directories.cache_dir();
+        if !cache_dir.exists() {
+            if let Err(error) = fs::create_dir_all(cache_dir) {
+                warn!("Failed to create cache directory: {:?}", error);
+                return None;
+            }
+        }
+        let path = [cache_dir.to_str()?, TOKEN_CACHE_FILE_NAME]
+            .iter()
+            .collect();
+        Some(path)
     }
 }
 

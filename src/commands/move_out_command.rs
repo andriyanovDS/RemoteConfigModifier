@@ -6,16 +6,16 @@ use async_trait::async_trait;
 use color_eyre::owo_colors::OwoColorize;
 use tracing::{error, info, warn};
 
-pub struct MoveOutCommand {
+pub struct MoveOutCommand<NS: NetworkService> {
     parameter_name: String,
-    network_service: NetworkService,
+    network_service: NS,
 }
 
-impl MoveOutCommand {
-    pub fn new(parameter_name: String) -> Self {
+impl<NS: NetworkService> MoveOutCommand<NS> {
+    pub fn new(parameter_name: String, network_service: NS) -> Self {
         Self {
             parameter_name,
-            network_service: NetworkService::new(),
+            network_service,
         }
     }
 
@@ -63,7 +63,7 @@ impl MoveOutCommand {
 }
 
 #[async_trait]
-impl Command for MoveOutCommand {
+impl<NS: NetworkService + Send> Command for MoveOutCommand<NS> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         self.run(project).await
     }

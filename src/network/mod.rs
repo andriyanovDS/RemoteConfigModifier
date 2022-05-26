@@ -1,17 +1,34 @@
 use crate::config::Project;
 use crate::remote_config::RemoteConfig;
+use async_trait::async_trait;
 use authenticator::Authenticator;
 use reqwest::{
     header::{ACCEPT_ENCODING, AUTHORIZATION, ETAG, IF_MATCH},
     Client, ClientBuilder,
 };
 use spinners::{Spinner, Spinners};
+use std::error::Error;
 use std::future::Future;
 use tracing::debug;
 
 mod authenticator;
 
-pub struct NetworkService {
+#[async_trait]
+pub trait NetworkService {
+    async fn get_remote_config(
+        &mut self,
+        project: &Project,
+    ) -> Result<ResponseWithEtag<RemoteConfig>, Box<dyn Error + Send + Sync>>;
+
+    async fn update_remote_config(
+        &mut self,
+        project: &Project,
+        config: RemoteConfig,
+        etag: String,
+    ) -> Result<(), Box<dyn Error + Send + Sync>>;
+}
+
+pub struct NetworkWorker {
     client: Client,
     authenticator: Authenticator,
 }
@@ -21,25 +38,42 @@ pub struct ResponseWithEtag<T> {
     pub data: T,
 }
 
-impl Default for NetworkService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl NetworkService {
-    pub fn new() -> Self {
+impl NetworkWorker {
+    pub fn new(app_name: String) -> Self {
         Self {
             client: ClientBuilder::new().gzip(true).build().unwrap(),
-            authenticator: Authenticator::new(),
+            authenticator: Authenticator::new(app_name),
         }
     }
 
-    pub async fn get_remote_config(
+    async fn perform_with_spinner<F, R>(
+        start_message: &str,
+        completion_message: &str,
+        future: F,
+    ) -> Result<R, Box<dyn Error + Send + Sync>>
+    where
+        F: Future<Output = Result<R, Box<dyn Error + Send + Sync>>>,
+    {
+        let mut spinner = Spinner::new(Spinners::Dots12, start_message.into());
+        let result = future.await;
+        if result.is_ok() {
+            print!("\r");
+            spinner.stop_with_message(completion_message.into());
+            println!();
+        } else {
+            println!();
+        }
+        result
+    }
+}
+
+#[async_trait]
+impl NetworkService for NetworkWorker {
+    async fn get_remote_config(
         &mut self,
         project: &Project,
-    ) -> Result<ResponseWithEtag<RemoteConfig>, Box<dyn std::error::Error + Send + Sync>> {
-        NetworkService::perform_with_spinner(
+    ) -> Result<ResponseWithEtag<RemoteConfig>, Box<dyn Error + Send + Sync>> {
+        NetworkWorker::perform_with_spinner(
             "Downloading remote config...",
             "Downloading completed successfully",
             async move {
@@ -70,14 +104,14 @@ impl NetworkService {
         .await
     }
 
-    pub async fn update_remote_config(
+    async fn update_remote_config(
         &mut self,
         project: &Project,
         config: RemoteConfig,
         etag: String,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         debug!("Remote config to upload: {:#?}", &config);
-        NetworkService::perform_with_spinner(
+        NetworkWorker::perform_with_spinner(
             "Uploading remote config...",
             "Uploading completed successfully",
             async move {
@@ -96,25 +130,5 @@ impl NetworkService {
             },
         )
         .await
-    }
-
-    async fn perform_with_spinner<F, R>(
-        start_message: &str,
-        completion_message: &str,
-        future: F,
-    ) -> Result<R, Box<dyn std::error::Error + Send + Sync>>
-    where
-        F: Future<Output = Result<R, Box<dyn std::error::Error + Send + Sync>>>,
-    {
-        let mut spinner = Spinner::new(Spinners::Dots12, start_message.into());
-        let result = future.await;
-        if result.is_ok() {
-            print!("\r");
-            spinner.stop_with_message(completion_message.into());
-            println!();
-        } else {
-            println!();
-        }
-        result
     }
 }

@@ -35,7 +35,7 @@ impl Authenticator {
     }
 
     async fn auth(&self) -> Result<AccessToken, Box<dyn std::error::Error + Send + Sync>> {
-        let secret_bytes = include_bytes!("../../clientsecret.json");
+        let secret_bytes = include_bytes!("../../client_secret.json");
         let secret = yup_oauth2::parse_application_secret(secret_bytes)?;
         let token_file_path = self
             .token_file_path()

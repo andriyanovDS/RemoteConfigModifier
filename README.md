@@ -113,7 +113,8 @@ $ rcm show -p=my_project
 `rcm` is written in [Rust](https://www.rust-lang.org/).
 The recommended way to install Rust for development is from the [official download page](https://www.rust-lang.org/tools/install), using rustup.
 
-Once Rust is installed, you can compile `rcm` with Cargo:
+Put `client_secret.json` with Google OAuth 2.0 secret to the root directory of the project.
+Once Rust is installed and secret file is placed, you can compile `rcm` with Cargo:
 
     cargo build
     cargo build --release

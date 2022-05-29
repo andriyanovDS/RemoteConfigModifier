@@ -13,7 +13,7 @@ Cargo.lock
 # Added by cargo
 
 /target
-clientsecret.json
+client_secret.json
 token_cache.json
 config.json
 /.idea

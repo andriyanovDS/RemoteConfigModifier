@@ -57,7 +57,9 @@ impl<NS: NetworkService, E: Editor> AddCommand<NS, E> {
             is_update,
         )
         .await?;
-
+        if projects.len() == 1 {
+            return Ok(());
+        }
         let message = "Do you want to add same values to all projects? [Y,n]";
         if self.input_reader.ask_confirmation(message) {
             for (index, project) in projects_iter {

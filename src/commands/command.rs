@@ -20,7 +20,7 @@ impl CommandRunner {
         }
     }
 
-    pub async fn run<C: Command>(self, command: C, arguments: crate::Project) -> Result<()> {
+    pub async fn run<C: Command>(self, command: C, arguments: crate::cli::Project) -> Result<()> {
         let mut projects = self.config_file.load()?.projects;
 
         if projects.is_empty() {

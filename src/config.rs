@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use term_table::row::Row;
 use term_table::table_cell::TableCell;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
     pub projects: Vec<Project>,
 }
@@ -30,20 +30,12 @@ impl Project {
     }
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            projects: Vec::new(),
-        }
-    }
-}
-
 impl<'a> From<&'a Project> for Row<'a> {
     fn from(project: &'a Project) -> Self {
         Row::new(vec![
             TableCell::new(&project.name),
             TableCell::new(&project.project_number),
-            TableCell::new(format!("{:#?}", project.app_ids))
+            TableCell::new(format!("{:#?}", project.app_ids)),
         ])
     }
 }

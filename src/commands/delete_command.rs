@@ -1,5 +1,6 @@
 use crate::commands::command::Command;
 use crate::config::Project;
+use crate::editor::Editor;
 use crate::error::Result;
 use crate::io::InputReader;
 use crate::network::NetworkService;
@@ -7,16 +8,18 @@ use async_trait::async_trait;
 use color_eyre::owo_colors::OwoColorize;
 use tracing::{error, info, warn};
 
-pub struct DeleteCommand<NS: NetworkService> {
+pub struct DeleteCommand<NS: NetworkService, E: Editor> {
     name: String,
     network_service: NS,
+    input_reader: InputReader<E>,
 }
 
-impl<NS: NetworkService> DeleteCommand<NS> {
-    pub fn new(name: String, network_service: NS) -> Self {
+impl<NS: NetworkService, E: Editor> DeleteCommand<NS, E> {
+    pub fn new(name: String, network_service: NS, input_reader: InputReader<E>) -> Self {
         Self {
             name,
             network_service,
+            input_reader,
         }
     }
 
@@ -34,7 +37,7 @@ impl<NS: NetworkService> DeleteCommand<NS> {
         let parameter = map_with_parameter.unwrap().remove(&self.name).unwrap();
 
         parameter.preview(&self.name, "Parameter will be deleted", None);
-        if !InputReader::ask_confirmation("Confirm: [Y,n]").await {
+        if !self.input_reader.ask_confirmation("Confirm: [Y,n]") {
             warn!("Operation was canceled.");
             return Ok(());
         }
@@ -46,7 +49,7 @@ impl<NS: NetworkService> DeleteCommand<NS> {
 }
 
 #[async_trait]
-impl<NS: NetworkService + Send> Command for DeleteCommand<NS> {
+impl<NS: NetworkService + Send, E: Editor + Send> Command for DeleteCommand<NS, E> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         self.run(project).await
     }

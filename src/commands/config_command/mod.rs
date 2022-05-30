@@ -1,9 +1,9 @@
 mod fs;
 
+use crate::cli::Config as Subcommand;
 use crate::config::Config;
 use crate::config::Project;
 use crate::error::Result;
-use crate::Config as Subcommand;
 pub use fs::ConfigFile;
 use term_table::row::Row;
 use term_table::table_cell::TableCell;

@@ -1,6 +1,7 @@
 use super::operator::{BinaryOperator, Operator, SetOperator};
+use crate::editor::Editor;
 use crate::error::{Error, Result};
-use crate::io::InputReader;
+use crate::io::{self, InputReader};
 use color_eyre::owo_colors::OwoColorize;
 use enum_iterator::IntoEnumIterator;
 
@@ -17,24 +18,151 @@ const ALL_SET_OPERATORS_EXCEPT_IN: [SetOperator; 10] = [
     SetOperator::Binary(BinaryOperator::MoreEq),
 ];
 
-pub async fn build_expression(app_ids: &[String]) -> Option<String> {
-    loop {
-        let items = ExpressionListItem::into_enum_iter().map(Into::into);
-        let index =
-            InputReader::request_select_item_in_list("Select condition:", items, None).await?;
-        let expression = ExpressionListItem::into_enum_iter()
-            .nth(index)
-            .unwrap()
-            .build(app_ids)
-            .await;
-        match expression {
-            Some(expression) => {
-                return Some(expression);
-            }
-            None => {
-                continue;
+pub struct ExpressionBuilder<'a, E: Editor> {
+    input_reader: &'a mut InputReader<E>,
+    app_ids: &'a [String],
+}
+
+impl<'a, E: Editor> ExpressionBuilder<'a, E> {
+    pub fn new(input_reader: &'a mut InputReader<E>, app_ids: &'a [String]) -> Self {
+        Self {
+            input_reader,
+            app_ids,
+        }
+    }
+
+    pub fn build(&mut self) -> Option<String> {
+        loop {
+            let items = ExpressionListItem::into_enum_iter().map(Into::into);
+            let index = io::request_select_item_in_list("Select condition:", items, None)?;
+            let expression_item = ExpressionListItem::into_enum_iter().nth(index).unwrap();
+            let expression = self.build_for_item(&expression_item);
+            if expression.is_some() {
+                return expression;
             }
         }
+    }
+
+    fn build_for_item(&mut self, item: &ExpressionListItem) -> Option<String> {
+        match item {
+            ExpressionListItem::AppId => Self::build_app_id_expr(self.app_ids),
+            ExpressionListItem::DeviceOS => {
+                let operator =
+                    Self::select_operator(&[BinaryOperator::Eq, BinaryOperator::BangEq])?;
+                let expression = Expression {
+                    name: "device.os",
+                    operator,
+                    value: self.select_single_condition_value("device OS"),
+                };
+                Some(expression.to_string())
+            }
+            ExpressionListItem::DeviceDateTime => {
+                let operator =
+                    Self::select_operator(&[BinaryOperator::LessEq, BinaryOperator::More])?;
+                let expression = Expression {
+                    name: "device.dateTime",
+                    operator,
+                    value: self.select_single_condition_value("device date time"),
+                };
+                Some(expression.to_string())
+            }
+            ExpressionListItem::DeviceCountry => {
+                let expression = Expression {
+                    name: "device.country",
+                    operator: SetOperator::In,
+                    value: self.select_multiple_condition_values("device device countries"),
+                };
+                Some(expression.to_string())
+            }
+            ExpressionListItem::DeviceLanguage => {
+                let expression = Expression {
+                    name: "device.language",
+                    operator: SetOperator::In,
+                    value: self.select_multiple_condition_values("device device languages"),
+                };
+                Some(expression.to_string())
+            }
+            ExpressionListItem::AppBuild => {
+                let app_id_expr = Self::build_app_id_expr(self.app_ids)?;
+                let expression =
+                    self.select_from_different_operators("app.build", "app build", "app builds")?;
+                Some(format!("{} && {}", app_id_expr, expression.to_string()))
+            }
+            ExpressionListItem::AppVersion => {
+                let app_id_expr = Self::build_app_id_expr(self.app_ids)?;
+                let expression = self.select_from_different_operators(
+                    "app.version",
+                    "app version",
+                    "app versions",
+                )?;
+                Some(format!("{} && {}", app_id_expr, expression.to_string()))
+            }
+            ExpressionListItem::UserProperty => {
+                let app_id_expr = Self::build_app_id_expr(self.app_ids)?;
+                let expression = self.select_from_different_operators(
+                    "app.userProperty",
+                    "user property",
+                    "user properties",
+                )?;
+                Some(format!("{} && {}", app_id_expr, expression.to_string()))
+            }
+        }
+    }
+
+    fn select_from_different_operators(
+        &mut self,
+        expression_name: &'static str,
+        label_for_single_value: &'static str,
+        label_for_multiple_values: &'static str,
+    ) -> Option<Expression<SetOperator>> where {
+        let operators = ALL_SET_OPERATORS_EXCEPT_IN.iter().map(Into::into);
+        let operator_index = io::request_select_item_in_list("Select operator:", operators, None)?;
+        let operator = ALL_SET_OPERATORS_EXCEPT_IN[operator_index].clone();
+        let value = match operator {
+            SetOperator::Binary(_) => {
+                vec![self.select_single_condition_value(label_for_single_value)]
+            }
+            _ => self.select_multiple_condition_values(label_for_multiple_values),
+        };
+        Some(Expression {
+            name: expression_name,
+            operator,
+            value,
+        })
+    }
+
+    fn select_single_condition_value(&mut self, label: &str) -> String {
+        let title = format!("Enter {}:", label.green());
+        self.input_reader.request_user_input::<str>(&title).unwrap()
+    }
+
+    fn select_multiple_condition_values(&mut self, label: &str) -> Vec<String> {
+        let title = format!("Enter {} separated by the comma:", label.green());
+        self.input_reader
+            .request_user_input::<str>(&title)
+            .unwrap()
+            .split(',')
+            .map(|v| v.trim().to_string())
+            .collect()
+    }
+
+    fn build_app_id_expr(app_ids: &[String]) -> Option<String> {
+        if app_ids.len() == 1 {
+            return Some(app_ids[0].clone());
+        }
+        let app_ids_iter = app_ids.iter().map(|id| id.split(':').nth(2).unwrap());
+        io::request_select_item_in_list("Select App ID:", app_ids_iter, None)
+            .map(|index| format!("app.id == '{}'", app_ids[index]))
+    }
+
+    fn select_operator<T>(operators: &'static [T]) -> Option<T>
+    where
+        for<'b> &'b T: Into<&'static str>,
+        T: Clone,
+    {
+        let items = operators.iter().map(Into::into);
+        io::request_select_item_in_list("Select operator:", items, None)
+            .map(|index| operators[index].clone())
     }
 }
 
@@ -85,73 +213,6 @@ struct Expression<O: Operator> {
     value: O::Item,
 }
 
-impl ExpressionListItem {
-    async fn build(&self, app_ids: &[String]) -> Option<String> {
-        match self {
-            Self::AppId => build_app_id_expr(app_ids).await,
-            Self::DeviceOS => {
-                let operator =
-                    select_operator(&[BinaryOperator::Eq, BinaryOperator::BangEq]).await?;
-                let expression = Expression {
-                    name: "device.os",
-                    operator,
-                    value: select_single_condition_value("device OS").await,
-                };
-                Some(expression.to_string())
-            }
-            Self::DeviceDateTime => {
-                let operator =
-                    select_operator(&[BinaryOperator::LessEq, BinaryOperator::More]).await?;
-                let expression = Expression {
-                    name: "device.dateTime",
-                    operator,
-                    value: select_single_condition_value("device date time").await,
-                };
-                Some(expression.to_string())
-            }
-            Self::DeviceCountry => {
-                let expression = Expression {
-                    name: "device.country",
-                    operator: SetOperator::In,
-                    value: select_multiple_condition_values("device device countries").await,
-                };
-                Some(expression.to_string())
-            }
-            Self::DeviceLanguage => {
-                let expression = Expression {
-                    name: "device.language",
-                    operator: SetOperator::In,
-                    value: select_multiple_condition_values("device device languages").await,
-                };
-                Some(expression.to_string())
-            }
-            Self::AppBuild => {
-                let app_id_expr = build_app_id_expr(app_ids).await?;
-                let expression =
-                    select_from_different_operators("app.build", "app build", "app builds").await?;
-                Some(format!("{} && {}", app_id_expr, expression.to_string()))
-            }
-            Self::AppVersion => {
-                let app_id_expr = build_app_id_expr(app_ids).await?;
-                let expression =
-                    select_from_different_operators("app.version", "app version", "app versions")
-                        .await?;
-                Some(format!("{} && {}", app_id_expr, expression.to_string()))
-            }
-            Self::UserProperty => {
-                let app_id_expr = build_app_id_expr(app_ids).await?;
-                let expression = select_from_different_operators(
-                    "app.userProperty",
-                    "user property",
-                    "user properties",
-                )
-                .await?;
-                Some(format!("{} && {}", app_id_expr, expression.to_string()))
-            }
-        }
-    }
-}
-
 impl<'a> From<ExpressionListItem> for &'static str {
     fn from(item: ExpressionListItem) -> &'static str {
         match item {
@@ -171,63 +232,4 @@ impl<O: Operator> ToString for Expression<O> {
     fn to_string(&self) -> String {
         self.operator.to_condition(self.name, &self.value)
     }
-}
-
-async fn build_app_id_expr(app_ids: &[String]) -> Option<String> {
-    if app_ids.len() == 1 {
-        return Some(app_ids[0].clone());
-    }
-    let app_ids_iter = app_ids.iter().map(|id| id.split(':').nth(2).unwrap());
-    InputReader::request_select_item_in_list("Select App ID:", app_ids_iter, None)
-        .await
-        .map(|index| format!("app.id == '{}'", app_ids[index]))
-}
-async fn select_from_different_operators(
-    expression_name: &'static str,
-    label_for_single_value: &'static str,
-    label_for_multiple_values: &'static str,
-) -> Option<Expression<SetOperator>> where {
-    let operators = ALL_SET_OPERATORS_EXCEPT_IN.iter().map(Into::into);
-    let operator_index =
-        InputReader::request_select_item_in_list("Select operator:", operators, None).await?;
-    let operator = ALL_SET_OPERATORS_EXCEPT_IN[operator_index].clone();
-    let value = match operator {
-        SetOperator::Binary(_) => {
-            vec![select_single_condition_value(label_for_single_value).await]
-        }
-        _ => select_multiple_condition_values(label_for_multiple_values).await,
-    };
-    Some(Expression {
-        name: expression_name,
-        operator,
-        value,
-    })
-}
-
-async fn select_operator<T>(operators: &'static [T]) -> Option<T>
-where
-    for<'a> &'a T: Into<&'static str>,
-    T: Clone,
-{
-    let items = operators.iter().map(Into::into);
-    InputReader::request_select_item_in_list("Select operator:", items, None)
-        .await
-        .map(|index| operators[index].clone())
-}
-
-async fn select_single_condition_value(label: &str) -> String {
-    let title = format!("Enter {}:", label.green());
-    InputReader::request_user_input_string::<str>(&title)
-        .await
-        .unwrap()
-}
-
-async fn select_multiple_condition_values(label: &str) -> Vec<String> {
-    let title = format!("Enter {} separated by the comma:", label.green());
-    InputReader::request_user_input_string::<str>(&title)
-        .await
-        .unwrap()
-        .split(',')
-        .map(|v| v.trim().to_string())
-        .collect()
 }

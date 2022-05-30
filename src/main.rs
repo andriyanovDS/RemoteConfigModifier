@@ -1,11 +1,13 @@
 use clap::Parser;
 use color_eyre::{owo_colors::OwoColorize, Report};
+use rcm::cli::{Cli, Command};
 use rcm::commands::{
     AddCommand, CommandRunner, ConfigCommand, DeleteCommand, MoveOutCommand, MoveToCommand,
     ShowCommand, UpdateCommand,
 };
+use rcm::io::InputReader;
 use rcm::network::NetworkWorker;
-use rcm::{Cli, Command};
+use rustyline::Editor;
 use std::ffi::OsStr;
 use std::path::Path;
 use tracing::error;
@@ -19,21 +21,32 @@ async fn main() -> Result<(), Report> {
     let app_name = app_name();
     let command_runner = CommandRunner::new(app_name.clone());
     let network_worker = NetworkWorker::new(app_name.clone());
+    let input_reader = InputReader::new(Editor::new());
     let result = match cli.command {
         Command::Add(arguments) => {
-            let command = AddCommand::new(arguments.name, arguments.description, network_worker);
+            let command = AddCommand::new(
+                arguments.name,
+                arguments.description,
+                network_worker,
+                input_reader,
+            );
             command_runner.run(command, arguments.project).await
         }
         Command::Update(arguments) => {
-            let command = UpdateCommand::new(arguments.name, network_worker);
+            let command = UpdateCommand::new(arguments.name, network_worker, input_reader);
             command_runner.run(command, arguments.project).await
         }
         Command::Delete(arguments) => {
-            let command = DeleteCommand::new(arguments.name, network_worker);
+            let command = DeleteCommand::new(arguments.name, network_worker, input_reader);
             command_runner.run(command, arguments.project).await
         }
         Command::MoveTo(arguments) => {
-            let command = MoveToCommand::new(arguments.name, arguments.group, network_worker);
+            let command = MoveToCommand::new(
+                arguments.name,
+                arguments.group,
+                network_worker,
+                input_reader,
+            );
             command_runner.run(command, arguments.project).await
         }
         Command::MoveOut(arguments) => {

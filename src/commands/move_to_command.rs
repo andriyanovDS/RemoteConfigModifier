@@ -1,5 +1,6 @@
 use crate::commands::command::Command;
 use crate::config::Project;
+use crate::editor::Editor;
 use crate::error::Result;
 use crate::io::InputReader;
 use crate::network::NetworkService;
@@ -10,18 +11,25 @@ use colored::{ColoredString, Colorize};
 use std::collections::HashMap;
 use tracing::{error, info, warn};
 
-pub struct MoveToCommand<NS: NetworkService> {
+pub struct MoveToCommand<NS: NetworkService, E: Editor> {
     parameter_name: String,
     group_name: Option<String>,
     network_service: NS,
+    input_reader: InputReader<E>,
 }
 
-impl<NS: NetworkService> MoveToCommand<NS> {
-    pub fn new(parameter_name: String, group_name: Option<String>, network_service: NS) -> Self {
+impl<NS: NetworkService, E: Editor> MoveToCommand<NS, E> {
+    pub fn new(
+        parameter_name: String,
+        group_name: Option<String>,
+        network_service: NS,
+        input_reader: InputReader<E>,
+    ) -> Self {
         Self {
             parameter_name,
             group_name,
             network_service,
+            input_reader,
         }
     }
 
@@ -68,8 +76,7 @@ impl<NS: NetworkService> MoveToCommand<NS> {
         let groups_count = config.parameter_groups.len();
         let keys = config.parameter_groups.keys().map(|name| name.as_str());
         let label = "Select the group you want to move the parameter to:";
-        let index =
-            InputReader::request_select_item_in_list(label, keys, create_new_group_option).await;
+        let index = crate::io::request_select_item_in_list(label, keys, create_new_group_option);
 
         if index.is_none() {
             return Ok(None);
@@ -94,7 +101,7 @@ impl<NS: NetworkService> MoveToCommand<NS> {
         config: &mut RemoteConfig,
         parameter: Parameter,
     ) -> Result<()> {
-        let (name, description) = MoveToCommand::<NS>::create_new_group_name().await?;
+        let (name, description) = self.create_new_group_name().await?;
         info!(
             "Parameter {} will be moved to {} group",
             self.parameter_name, &name
@@ -112,14 +119,15 @@ impl<NS: NetworkService> MoveToCommand<NS> {
         Ok(())
     }
 
-    async fn create_new_group_name() -> Result<(String, Option<String>)> {
+    async fn create_new_group_name(&mut self) -> Result<(String, Option<String>)> {
         let provide_name_msg = "Enter group name: ".green();
-        let name =
-            InputReader::request_user_input_string::<ColoredString>(&provide_name_msg).await?;
+        let name = self
+            .input_reader
+            .request_user_input::<ColoredString>(&provide_name_msg)?;
         let provide_description_msg = "Enter group description (Optional):".green();
-        let description =
-            InputReader::request_user_input_string::<ColoredString>(&provide_description_msg)
-                .await?;
+        let description = self
+            .input_reader
+            .request_user_input::<ColoredString>(&provide_description_msg)?;
         let description = if description.is_empty() {
             None
         } else {
@@ -151,7 +159,7 @@ impl<NS: NetworkService> MoveToCommand<NS> {
                     "Group with name {} does not exist! Do you want to create it? [Y, n]",
                     &group_name
                 );
-                if !InputReader::ask_confirmation(&message.yellow()).await {
+                if !self.input_reader.ask_confirmation(&message.yellow()) {
                     return Ok(None);
                 } else {
                     let mut parameters = HashMap::new();
@@ -174,7 +182,7 @@ impl<NS: NetworkService> MoveToCommand<NS> {
 }
 
 #[async_trait]
-impl<NS: NetworkService + Send> Command for MoveToCommand<NS> {
+impl<NS: NetworkService + Send, E: Editor + Send> Command for MoveToCommand<NS, E> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         self.run(project).await
     }

@@ -1,5 +1,6 @@
 use crate::commands::command::Command;
 use crate::config::Project;
+use crate::editor::Editor;
 use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
@@ -14,18 +15,25 @@ mod expression_builder;
 mod operator;
 pub mod parameter_builder;
 
-pub struct AddCommand<NS: NetworkService> {
+pub struct AddCommand<NS: NetworkService, E: Editor> {
     name: Option<String>,
     description: Option<String>,
     network_service: NS,
+    input_reader: InputReader<E>,
 }
 
-impl<NS: NetworkService> AddCommand<NS> {
-    pub fn new(name: Option<String>, description: Option<String>, network_service: NS) -> Self {
+impl<NS: NetworkService, E: Editor> AddCommand<NS, E> {
+    pub fn new(
+        name: Option<String>,
+        description: Option<String>,
+        network_service: NS,
+        input_reader: InputReader<E>,
+    ) -> Self {
         Self {
             name,
             description,
             network_service,
+            input_reader,
         }
     }
 
@@ -51,7 +59,7 @@ impl<NS: NetworkService> AddCommand<NS> {
         .await?;
 
         let message = "Do you want to add same values to all projects? [Y,n]";
-        if InputReader::ask_confirmation(message).await {
+        if self.input_reader.ask_confirmation(message) {
             for (index, project) in projects_iter {
                 info!("Running for {} project", &project.name);
                 let mut response = self.network_service.get_remote_config(project).await?;
@@ -72,12 +80,19 @@ impl<NS: NetworkService> AddCommand<NS> {
         } else {
             for (index, project) in projects_iter {
                 info!("Running for {} project", &project.name);
-                let builder = ParameterBuilder::new(name.clone(), &parameter);
+                let mut conditions = Vec::new();
+                let builder = ParameterBuilder::new_from_parameter(
+                    name.clone(),
+                    &parameter,
+                    &mut self.input_reader,
+                    &[],
+                    &mut conditions,
+                );
                 let selected_condition_names = parameter
                     .conditional_values
                     .iter()
                     .map(|(name, _)| name.as_str());
-                let (name, parameter) = builder.add_values(selected_condition_names).await?;
+                let (name, parameter) = builder.add_values(selected_condition_names)?;
                 let mut response = self.network_service.get_remote_config(project).await?;
                 response.data.extend_conditions(
                     &mut selected_conditions,
@@ -108,7 +123,7 @@ impl<NS: NetworkService> AddCommand<NS> {
                     name
                 );
                 let message = message.yellow().to_string();
-                if !InputReader::ask_confirmation(&message).await {
+                if !self.input_reader.ask_confirmation(&message) {
                     return Err(Error::new("Operation was canceled."));
                 }
             }
@@ -125,7 +140,7 @@ impl<NS: NetworkService> AddCommand<NS> {
             "Parameter will be added"
         };
         parameter.preview(&name, title, None);
-        if !InputReader::ask_confirmation("Confirm: [Y,n]").await {
+        if !self.input_reader.ask_confirmation("Confirm: [Y,n]") {
             return Err(Error::new("Operation was canceled."));
         }
         match map_with_parameter {
@@ -144,17 +159,17 @@ impl<NS: NetworkService> AddCommand<NS> {
 }
 
 #[async_trait]
-impl<NS: NetworkService + Send> Command for AddCommand<NS> {
+impl<NS: NetworkService + Send, E: Editor + Send> Command for AddCommand<NS, E> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
         let mut response = self.network_service.get_remote_config(project).await?;
         let (name, parameter) = ParameterBuilder::start_flow(
             self.name.take(),
             self.description.take(),
-            &mut response.data.conditions,
+            &mut self.input_reader,
             &project.app_ids,
-        )
-        .await;
+            &mut response.data.conditions,
+        );
         self.add_parameter(name, parameter, response, project, false)
             .await
     }
@@ -169,10 +184,10 @@ impl<NS: NetworkService + Send> Command for AddCommand<NS> {
         let (name, parameter) = ParameterBuilder::start_flow(
             self.name.take(),
             self.description.take(),
-            &mut response.data.conditions,
+            &mut self.input_reader,
             &main_project.app_ids,
-        )
-        .await;
+            &mut response.data.conditions,
+        );
 
         self.apply_parameter_to_projects(name, parameter, projects, response, false)
             .await

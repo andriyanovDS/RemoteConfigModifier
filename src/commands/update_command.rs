@@ -2,6 +2,7 @@ use super::add_command::parameter_builder::ParameterBuilder;
 use crate::commands::command::Command;
 use crate::commands::AddCommand;
 use crate::config::Project;
+use crate::editor::Editor;
 use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::{NetworkService, ResponseWithEtag};
@@ -11,16 +12,18 @@ use color_eyre::owo_colors::OwoColorize;
 use std::collections::HashMap;
 use tracing::{info, warn};
 
-pub struct UpdateCommand<NS: NetworkService> {
+pub struct UpdateCommand<NS: NetworkService, E: Editor> {
     name: String,
     network_service: Option<NS>,
+    input_reader: Option<InputReader<E>>,
 }
 
-impl<NS: NetworkService> UpdateCommand<NS> {
-    pub fn new(name: String, network_service: NS) -> Self {
+impl<NS: NetworkService, E: Editor> UpdateCommand<NS, E> {
+    pub fn new(name: String, network_service: NS, input_reader: InputReader<E>) -> Self {
         Self {
             name,
             network_service: Some(network_service),
+            input_reader: Some(input_reader),
         }
     }
 
@@ -63,7 +66,12 @@ impl<NS: NetworkService> UpdateCommand<NS> {
                 parameter.preview(&self.name, "Parameter will be updated", Some(group_name))
             }
         }
-        if !InputReader::ask_confirmation("Confirm: [Y,n]").await {
+        if !self
+            .input_reader
+            .as_mut()
+            .unwrap()
+            .ask_confirmation("Confirm: [Y,n]")
+        {
             return Ok(());
         }
         let params = response.data.find_source_params(source);
@@ -78,7 +86,7 @@ impl<NS: NetworkService> UpdateCommand<NS> {
 }
 
 #[async_trait]
-impl<NS: NetworkService + Send> Command for UpdateCommand<NS> {
+impl<NS: NetworkService + Send, E: Editor + Send> Command for UpdateCommand<NS, E> {
     async fn run_for_single_project(mut self, project: &Project) -> Result<()> {
         info!("Running for {} project", &project.name);
         let network_service = self.network_service.as_mut().unwrap();
@@ -94,10 +102,10 @@ impl<NS: NetworkService + Send> Command for UpdateCommand<NS> {
         let (name, parameter) = ParameterBuilder::start_flow(
             Some(std::mem::take(&mut self.name)),
             description,
-            &mut config.conditions,
+            self.input_reader.as_mut().unwrap(),
             &project.app_ids,
-        )
-        .await;
+            &mut config.conditions,
+        );
         self.update_parameter(name, parameter, response, &source, project)
             .await
     }
@@ -118,12 +126,17 @@ impl<NS: NetworkService + Send> Command for UpdateCommand<NS> {
         let (name, parameter) = ParameterBuilder::start_flow(
             Some(std::mem::take(&mut self.name)),
             description,
-            &mut response.data.conditions,
+            self.input_reader.as_mut().unwrap(),
             &main_project.app_ids,
-        )
-        .await;
+            &mut response.data.conditions,
+        );
 
-        let mut add_command = AddCommand::new(None, None, self.network_service.take().unwrap());
+        let mut add_command = AddCommand::new(
+            None,
+            None,
+            self.network_service.take().unwrap(),
+            self.input_reader.take().unwrap(),
+        );
         add_command
             .apply_parameter_to_projects(name, parameter, projects, response, true)
             .await

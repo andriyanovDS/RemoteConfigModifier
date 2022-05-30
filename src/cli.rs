@@ -32,7 +32,7 @@ pub struct Add {
     /// Parameter name
     #[clap(short, long)]
     pub name: Option<String>,
-    /// Parameter to add
+    /// Parameter description
     #[clap(short, long)]
     pub description: Option<String>,
     #[clap(flatten)]

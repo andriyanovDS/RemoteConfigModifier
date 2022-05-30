@@ -145,9 +145,6 @@ impl<'a, E: Editor> ParameterBuilder<'a, E> {
     }
 
     fn request_condition(&mut self) -> &mut Self {
-        if self.conditions.is_empty() {
-            return self;
-        }
         let message = format!("{}", "Do you want to add conditional value? [Y,n]".green());
         if let Some(index) = self.select_condition(&message) {
             let condition_name = self.conditions[index].name.clone();

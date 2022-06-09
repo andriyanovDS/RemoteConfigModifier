@@ -37,7 +37,7 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
 
     pub fn new_for_all_projects(
         source_project: String,
-        projects: &'a Vec<Project>,
+        projects: &'a [Project],
         network_service: NS,
         input_reader: InputReader<E>,
     ) -> Result<MigrateCommand<'a, NS, E>> {
@@ -69,7 +69,7 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
     pub fn new_from_projects(
         source_project: String,
         destinations: Vec<String>,
-        projects: &'a Vec<Project>,
+        projects: &'a [Project],
         network_service: NS,
         input_reader: InputReader<E>,
     ) -> Result<MigrateCommand<'a, NS, E>> {
@@ -114,13 +114,13 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
         }
         let source = self
             .network_service
-            .get_remote_config(&self.source_project)
+            .get_remote_config(self.source_project)
             .await?
             .data;
 
         for project in self.destinations {
             info!("Running for {} project", &project.name);
-            let mut response = self.network_service.get_remote_config(&project).await?;
+            let mut response = self.network_service.get_remote_config(project).await?;
             let destination = &mut response.data;
             let existing_names = destination.existing_parameter_names();
             let new_parameters = source.find_new_parameters(&existing_names);
@@ -167,7 +167,7 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
                 continue;
             }
             self.network_service
-                .update_remote_config(&project, response.data, response.etag)
+                .update_remote_config(project, response.data, response.etag)
                 .await?;
         }
         Ok(())
@@ -212,7 +212,7 @@ impl RemoteConfig {
                     .iter()
                     .filter(|(name, _)| !existing_names.contains(name.as_str()))
                     .for_each(|(name, parameter)| {
-                        let description = parameter.description.as_ref().map(|v| v.as_str());
+                        let description = parameter.description.as_deref();
                         new_parameters.push(NewParameter {
                             group: Some((group_name.as_str(), description)),
                             name: name.clone(),

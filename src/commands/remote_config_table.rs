@@ -104,7 +104,7 @@ impl Condition {
         let expression = self.expression.replace("&& ", "\n && ");
         Row::new(vec![
             TableCell::new(&self.name),
-            TableCell::new_with_col_span(expression.to_string(), 4),
+            TableCell::new_with_col_span(expression, 4),
         ])
     }
 }

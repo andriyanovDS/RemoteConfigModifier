@@ -262,7 +262,7 @@ impl Parts {
             name,
             description: parameter.description.clone(),
             default_value: Default::default(),
-            value_type: parameter.value_type.clone(),
+            value_type: parameter.value_type,
             conditional_values: HashMap::with_capacity(parameter.conditional_values.len()),
         }
     }

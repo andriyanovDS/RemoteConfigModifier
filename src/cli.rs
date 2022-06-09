@@ -25,6 +25,8 @@ pub enum Command {
     /// Show projects stored in config file
     #[clap(subcommand)]
     Config(Config),
+    /// Migrate parameters from one project to others
+    Migrate(Migrate),
 }
 
 #[derive(Debug, Args)]
@@ -76,6 +78,15 @@ pub struct Delete {
     pub name: String,
     #[clap(flatten)]
     pub project: Project,
+}
+
+#[derive(Debug, Args)]
+pub struct Migrate {
+    /// Project to move parameters from
+    #[clap(short, long)]
+    pub source: String,
+    #[clap(short, long)]
+    pub projects: Option<Vec<String>>,
 }
 
 #[derive(Debug, Subcommand)]

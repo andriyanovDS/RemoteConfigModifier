@@ -221,8 +221,7 @@ impl<'a, E: Editor> ParameterBuilder<'a, E> {
                     break name;
                 }
             };
-            let mut expression_builder =
-                ExpressionBuilder::new(self.input_reader, self.app_ids);
+            let mut expression_builder = ExpressionBuilder::new(self.input_reader, self.app_ids);
             let expression = expression_builder.build();
             if let Some(expression) = expression {
                 info!(

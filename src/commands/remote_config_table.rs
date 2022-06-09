@@ -1,7 +1,51 @@
-use crate::remote_config::{Condition, Parameter, ParameterValue, ParameterValueType};
+use crate::remote_config::{
+    Condition, Parameter, ParameterValue, ParameterValueType, RemoteConfig,
+};
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 use term_table::{Table, TableStyle};
+
+impl RemoteConfig {
+    pub fn build_table<'a, 'b>(&'a self, project_name: &'b str) -> Table<'a> {
+        let mut table = Table::new();
+        table.max_column_width = 25;
+        table.style = TableStyle::simple();
+
+        let title = format!("{} parameters", project_name);
+        table.add_row(Self::make_title_row(title));
+        self.parameters
+            .iter()
+            .flat_map(|(name, parameter)| parameter.make_row(name, None))
+            .for_each(|row| table.add_row(row));
+
+        self.parameter_groups
+            .iter()
+            .flat_map(|(group_name, group)| {
+                group
+                    .parameters
+                    .iter()
+                    .flat_map(|(name, parameter)| parameter.make_row(name, Some(group_name)))
+            })
+            .for_each(|row| table.add_row(row));
+
+        if !self.conditions.is_empty() {
+            table.add_row(Self::make_title_row("Conditions".to_string()));
+            self.conditions
+                .iter()
+                .map(|condition| condition.make_row())
+                .for_each(|row| table.add_row(row))
+        }
+        table
+    }
+
+    fn make_title_row(title: String) -> Row<'static> {
+        Row::new(vec![TableCell::new_with_alignment(
+            title,
+            5,
+            Alignment::Center,
+        )])
+    }
+}
 
 impl Parameter {
     pub fn make_row(&self, name: &str, group_name: Option<&str>) -> Vec<Row> {
@@ -56,11 +100,11 @@ impl Parameter {
 }
 
 impl Condition {
-    pub fn make_row(&mut self) -> Row {
-        self.expression = self.expression.replace("&& ", "\n && ");
+    pub fn make_row(&self) -> Row {
+        let expression = self.expression.replace("&& ", "\n && ");
         Row::new(vec![
             TableCell::new(&self.name),
-            TableCell::new_with_col_span(&self.expression, 4),
+            TableCell::new_with_col_span(expression.to_string(), 4),
         ])
     }
 }

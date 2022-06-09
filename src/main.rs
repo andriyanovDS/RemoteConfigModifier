@@ -2,8 +2,8 @@ use clap::Parser;
 use color_eyre::{owo_colors::OwoColorize, Report};
 use rcm::cli::{Cli, Command};
 use rcm::commands::{
-    AddCommand, CommandRunner, ConfigCommand, DeleteCommand, MoveOutCommand, MoveToCommand,
-    ShowCommand, UpdateCommand,
+    AddCommand, CommandRunner, ConfigCommand, ConfigFile, DeleteCommand, MigrateCommand,
+    MoveOutCommand, MoveToCommand, ShowCommand, UpdateCommand,
 };
 use rcm::io::InputReader;
 use rcm::network::NetworkWorker;
@@ -59,6 +59,26 @@ async fn main() -> Result<(), Report> {
                 .await
         }
         Command::Config(arguments) => ConfigCommand::new(app_name, arguments).run(),
+        Command::Migrate(arguments) => {
+            let config_file = ConfigFile::new(app_name);
+            let projects = config_file.load()?.projects;
+            let command = match arguments.projects {
+                Some(arg_projects) => MigrateCommand::new_from_projects(
+                    arguments.source,
+                    arg_projects,
+                    &projects,
+                    network_worker,
+                    input_reader,
+                ),
+                None => MigrateCommand::new_for_all_projects(
+                    arguments.source,
+                    &projects,
+                    network_worker,
+                    input_reader,
+                ),
+            }?;
+            command.run().await
+        }
     };
     if let Err(error) = result {
         error!("{}", error.message.red())

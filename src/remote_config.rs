@@ -59,7 +59,7 @@ pub struct Parameter {
     pub value_type: ParameterValueType,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ParameterValueType {
     #[serde(rename = "PARAMETER_VALUE_TYPE_UNSPECIFIED")]

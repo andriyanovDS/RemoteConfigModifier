@@ -1,25 +1,12 @@
 <div align="center">
 
-# RemoteConfigModifier
-RCM is a command-line tool to modify Firebase remote config.
+# Firebase remote config CLI (rcm)
+rcm is a command-line tool to modify Firebase remote config.
 </div>
 
 ### Documentation quick links
-* [Installation](#installation)
 * [How to use](#usage)
 * [Development](#development)
-
-<a id="installation">
-<h2>Installation</h2>
-</a>
-RCM now is only available for MacOS.
-
-You can build and install it from source (requires the latest stable [Rust] compiler.)
-```console
-cargo install --git https://github.com/andriyanovDS/RemoteConfigModifier.git rcm
-```
-
-[rust]: https://www.rust-lang.org
 
 <a id="usage">
 <h2>How to use</h2>

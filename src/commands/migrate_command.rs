@@ -5,7 +5,7 @@ use crate::io::InputReader;
 use crate::network::NetworkService;
 use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
 use std::collections::{HashMap, HashSet};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 pub struct MigrateCommand<'a, NS: NetworkService, E: Editor> {
     source_project: &'a Project,
@@ -41,64 +41,57 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
     }
 
     pub fn new_for_all_projects(
-        source_project: String,
+        source_project_name: String,
         projects: &'a [Project],
         network_service: NS,
         input_reader: InputReader<E>,
     ) -> Result<MigrateCommand<'a, NS, E>> {
-        let source = projects
+        let source_project = projects
             .iter()
-            .find(|project| project.name == source_project);
-
-        if source.is_none() {
-            return Err(Error {
+            .find(|project| project.name == source_project_name)
+            .ok_or_else(|| Error {
                 message: format!(
-                    "Source project {} was not found in configuration file",
-                    source_project
+                    "Source project {source_project_name} was not found in configuration file"
                 ),
-            });
-        };
+            })?;
+            
         let projects = projects
             .iter()
-            .filter(|project| project.name != source_project)
+            .filter(|project| project.name != source_project_name)
             .collect();
 
         Ok(Self {
-            source_project: source.unwrap(),
+            source_project,
             destinations: projects,
             network_service,
             input_reader,
         })
     }
 
-    pub fn new_from_projects(
-        source_project: String,
+    pub fn new_for_selected_projects(
+        source_project_name: String,
         destinations: Vec<String>,
         projects: &'a [Project],
         network_service: NS,
         input_reader: InputReader<E>,
     ) -> Result<MigrateCommand<'a, NS, E>> {
-        let source = projects
+        let source_project = projects
             .iter()
-            .find(|project| project.name == source_project)
+            .find(|project| project.name == source_project_name)
             .ok_or_else(|| Error {
                 message: format!(
-                    "Source project {source_project} was not found in configuration file"
+                    "Source project {source_project_name} was not found in configuration file"
                 ),
             })?;
-        let destinations = destinations
-            .into_iter()
-            .filter_map(|destination| {
-                let project = projects.iter().find(|project| destination == project.name);
-                if project.is_none() {
-                    warn!("Destination project {destination} was not found in configuration file!");
-                }
-                project
+        let destination_names = destinations.into_iter().collect::<HashSet<_>>();
+        let destinations = projects
+            .iter()
+            .filter(|project| {
+                destination_names.contains(&project.name) && project.name != source_project_name
             })
             .collect::<Vec<_>>();
-
         Ok(Self {
-            source_project: source,
+            source_project,
             destinations,
             network_service,
             input_reader,

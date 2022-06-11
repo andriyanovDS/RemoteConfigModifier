@@ -63,7 +63,7 @@ async fn main() -> Result<(), Report> {
             let config_file = ConfigFile::new(app_name);
             let projects = config_file.load()?.projects;
             let command = match arguments.projects {
-                Some(arg_projects) => MigrateCommand::new_from_projects(
+                Some(arg_projects) => MigrateCommand::new_for_selected_projects(
                     arguments.source,
                     arg_projects,
                     &projects,

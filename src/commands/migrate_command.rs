@@ -22,7 +22,7 @@ struct NewParameter<'a> {
 
 struct NewParameterGroup<'a> {
     name: &'a str,
-    description: Option<&'a str>
+    description: Option<&'a str>,
 }
 
 impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
@@ -81,12 +81,10 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
         let source = projects
             .iter()
             .find(|project| project.name == source_project)
-            .ok_or_else(|| {
-                Error {
-                    message: format!(
-                        "Source project {source_project} was not found in configuration file"
-                    ),
-                }
+            .ok_or_else(|| Error {
+                message: format!(
+                    "Source project {source_project} was not found in configuration file"
+                ),
             })?;
         let destinations = destinations
             .into_iter()
@@ -187,43 +185,39 @@ impl RemoteConfig {
     }
 
     fn find_new_parameters<'b>(&self, existing_names: &'b HashSet<&str>) -> Vec<NewParameter> {
-        let new_root_parameters = self.parameters
-            .iter()
-            .filter_map(|(name, parameter)| {
-                if existing_names.contains(name.as_str()) {
-                    None
-                } else {
-                    Some(NewParameter {
-                        group: None,
-                        name: name.clone(),
-                        parameter: parameter.clone_without_coniditional_values(),
-                    })
-                }
-            });
-        
-        let new_group_parameters = self.parameter_groups
+        let new_root_parameters = self.parameters.iter().filter_map(|(name, parameter)| {
+            if existing_names.contains(name.as_str()) {
+                None
+            } else {
+                Some(NewParameter {
+                    group: None,
+                    name: name.clone(),
+                    parameter: parameter.clone_without_coniditional_values(),
+                })
+            }
+        });
+
+        let new_group_parameters = self
+            .parameter_groups
             .iter()
             .flat_map(|(group_name, group)| {
-                group
-                    .parameters
-                    .iter()
-                    .filter_map(|(name, parameter)| {
-                        if existing_names.contains(name.as_str()) {
-                            None
-                        } else {
-                            let parameter_group = NewParameterGroup {
-                                name: group_name.as_str(),
-                                description: group.description.as_deref()
-                            };
-                            Some(NewParameter {
-                                group: Some(parameter_group),
-                                name: name.clone(),
-                                parameter: parameter.clone_without_coniditional_values(),
-                            })
-                        }
-                    })
+                group.parameters.iter().filter_map(|(name, parameter)| {
+                    if existing_names.contains(name.as_str()) {
+                        None
+                    } else {
+                        let parameter_group = NewParameterGroup {
+                            name: group_name.as_str(),
+                            description: group.description.as_deref(),
+                        };
+                        Some(NewParameter {
+                            group: Some(parameter_group),
+                            name: name.clone(),
+                            parameter: parameter.clone_without_coniditional_values(),
+                        })
+                    }
+                })
             });
-        
+
         new_root_parameters
             .chain(new_group_parameters)
             .collect::<Vec<_>>()

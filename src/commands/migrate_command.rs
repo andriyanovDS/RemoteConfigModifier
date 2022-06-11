@@ -15,9 +15,14 @@ pub struct MigrateCommand<'a, NS: NetworkService, E: Editor> {
 }
 
 struct NewParameter<'a> {
-    group: Option<(&'a str, Option<&'a str>)>,
+    group: Option<NewParameterGroup<'a>>,
     name: String,
     parameter: Parameter,
+}
+
+struct NewParameterGroup<'a> {
+    name: &'a str,
+    description: Option<&'a str>
 }
 
 impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
@@ -75,27 +80,22 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
     ) -> Result<MigrateCommand<'a, NS, E>> {
         let source = projects
             .iter()
-            .find(|project| project.name == source_project);
-
-        if source.is_none() {
-            return Err(Error {
-                message: format!(
-                    "Source project {} was not found in configuration file",
-                    source_project
-                ),
-            });
-        };
-        let source = source.unwrap();
+            .find(|project| project.name == source_project)
+            .ok_or_else(|| {
+                Error {
+                    message: format!(
+                        "Source project {source_project} was not found in configuration file"
+                    ),
+                }
+            })?;
         let destinations = destinations
             .into_iter()
             .filter_map(|destination| {
-                match projects.iter().find(|project| destination == project.name) {
-                    None => {
-                        warn!("Destination project {destination} was not found in configuration file!");
-                        None
-                    }
-                    Some(project) => Some(project)
+                let project = projects.iter().find(|project| destination == project.name);
+                if project.is_none() {
+                    warn!("Destination project {destination} was not found in configuration file!");
                 }
+                project
             })
             .collect::<Vec<_>>();
 
@@ -138,22 +138,22 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
                             .insert(parameter.name, parameter.parameter);
                         continue;
                     }
-                    Some((group_name, group_description)) => destination
+                    Some(group) => destination
                         .parameter_groups
-                        .get_mut(group_name)
-                        .ok_or((group_name, group_description)),
+                        .get_mut(group.name)
+                        .ok_or(group),
                 };
                 match group {
                     Ok(group) => {
                         group.parameters.insert(parameter.name, parameter.parameter);
                     }
-                    Err((group_name, group_description)) => {
+                    Err(group) => {
                         let mut parameters = HashMap::<String, Parameter>::new();
                         parameters.insert(parameter.name, parameter.parameter);
                         destination.parameter_groups.insert(
-                            group_name.to_string(),
+                            group.name.to_string(),
                             ParameterGroup {
-                                description: group_description.map(|name| name.to_string()),
+                                description: group.description.map(|name| name.to_string()),
                                 parameters,
                             },
                         );
@@ -176,55 +176,67 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
 
 impl RemoteConfig {
     fn existing_parameter_names(&self) -> HashSet<&str> {
-        let mut names = HashSet::<&str>::new();
         self.parameter_groups
             .values()
             .flat_map(|group| group.parameters.keys())
             .chain(self.parameters.keys())
-            .for_each(|name| {
+            .fold(HashSet::new(), |mut names, name| {
                 names.insert(name);
-            });
-        names
+                names
+            })
     }
 
     fn find_new_parameters<'b>(&self, existing_names: &'b HashSet<&str>) -> Vec<NewParameter> {
-        let mut new_parameters = Vec::<NewParameter>::new();
-        self.parameters
+        let new_root_parameters = self.parameters
             .iter()
-            .filter(|(name, _)| !existing_names.contains(name.as_str()))
-            .for_each(|(name, parameter)| {
-                new_parameters.push(NewParameter {
-                    group: None,
-                    name: name.clone(),
-                    parameter: Parameter {
-                        default_value: parameter.default_value.clone(),
-                        description: parameter.description.clone(),
-                        value_type: parameter.value_type,
-                        conditional_values: HashMap::new(),
-                    },
-                });
+            .filter_map(|(name, parameter)| {
+                if existing_names.contains(name.as_str()) {
+                    None
+                } else {
+                    Some(NewParameter {
+                        group: None,
+                        name: name.clone(),
+                        parameter: parameter.clone_without_coniditional_values(),
+                    })
+                }
             });
-        self.parameter_groups
+        
+        let new_group_parameters = self.parameter_groups
             .iter()
-            .for_each(|(group_name, group)| {
+            .flat_map(|(group_name, group)| {
                 group
                     .parameters
                     .iter()
-                    .filter(|(name, _)| !existing_names.contains(name.as_str()))
-                    .for_each(|(name, parameter)| {
-                        let description = parameter.description.as_deref();
-                        new_parameters.push(NewParameter {
-                            group: Some((group_name.as_str(), description)),
-                            name: name.clone(),
-                            parameter: Parameter {
-                                default_value: parameter.default_value.clone(),
-                                description: parameter.description.clone(),
-                                value_type: parameter.value_type,
-                                conditional_values: HashMap::new(),
-                            },
-                        });
-                    });
+                    .filter_map(|(name, parameter)| {
+                        if existing_names.contains(name.as_str()) {
+                            None
+                        } else {
+                            let parameter_group = NewParameterGroup {
+                                name: group_name.as_str(),
+                                description: group.description.as_deref()
+                            };
+                            Some(NewParameter {
+                                group: Some(parameter_group),
+                                name: name.clone(),
+                                parameter: parameter.clone_without_coniditional_values(),
+                            })
+                        }
+                    })
             });
-        new_parameters
+        
+        new_root_parameters
+            .chain(new_group_parameters)
+            .collect::<Vec<_>>()
+    }
+}
+
+impl Parameter {
+    fn clone_without_coniditional_values(&self) -> Self {
+        Parameter {
+            default_value: self.default_value.clone(),
+            description: self.description.clone(),
+            value_type: self.value_type,
+            conditional_values: HashMap::new(),
+        }
     }
 }

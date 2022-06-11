@@ -4,7 +4,9 @@ use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::NetworkService;
 use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
+use colored::Colorize;
 use std::collections::{HashMap, HashSet};
+use term_table::row::Row;
 use tracing::{debug, info};
 
 pub struct MigrateCommand<'a, NS: NetworkService, E: Editor> {
@@ -54,7 +56,7 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
                     "Source project {source_project_name} was not found in configuration file"
                 ),
             })?;
-            
+
         let projects = projects
             .iter()
             .filter(|project| project.name != source_project_name)
@@ -120,6 +122,7 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
                 println!("No new parameters was found.");
                 continue;
             }
+            destination.render(&project.name, &new_parameters);
 
             for parameter in new_parameters {
                 let group = match parameter.group {
@@ -151,9 +154,7 @@ impl<'a, NS: NetworkService, E: Editor> MigrateCommand<'a, NS, E> {
                     }
                 };
             }
-            let table = destination.build_table(&project.name);
-            println!("Updated configuration:");
-            println!("{}", table.render());
+
             if !self.input_reader.ask_confirmation("Confirm: [Y,n]") {
                 continue;
             }
@@ -215,6 +216,21 @@ impl RemoteConfig {
             .chain(new_group_parameters)
             .collect::<Vec<_>>()
     }
+
+    fn render(&self, project_name: &str, new_parameters: &Vec<NewParameter>) {
+        let new_parameter_rows = new_parameters.iter().flat_map(|param| param.make_rows());
+
+        let mut table = self.build_table(project_name);
+        let rows = &mut table.rows;
+        rows.reserve(new_parameters.len());
+        let mut condition_rows = rows
+            .split_off(rows.len() - self.conditions.len());
+        rows.extend(new_parameter_rows);
+        rows.append(&mut condition_rows);
+
+        println!("Updated configuration:");
+        println!("{}", table.render());
+    }
 }
 
 impl Parameter {
@@ -225,5 +241,12 @@ impl Parameter {
             value_type: self.value_type,
             conditional_values: HashMap::new(),
         }
+    }
+}
+
+impl<'a> NewParameter<'a> {
+    fn make_rows(&self) -> Vec<Row> {
+        let group_name = self.group.as_ref().map(|v| v.name);
+        self.parameter.make_row(self.name.green(), group_name)
     }
 }

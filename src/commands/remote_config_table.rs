@@ -48,7 +48,7 @@ impl RemoteConfig {
 }
 
 impl Parameter {
-    pub fn make_row(&self, name: &str, group_name: Option<&str>) -> Vec<Row> {
+    pub fn make_row<N: ToString>(&self, name: N, group_name: Option<&str>) -> Vec<Row> {
         let rows_count = self.conditional_values.len() + 1;
         let mut rows = Vec::with_capacity(rows_count);
         let default_row = Row::new(vec![

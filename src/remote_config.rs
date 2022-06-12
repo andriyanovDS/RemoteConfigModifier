@@ -167,12 +167,12 @@ mod tests {
         let parameter = Parameter {
             default_value: Some(ParameterValue::Value("false".to_string())),
             conditional_values: HashMap::new(),
-            description: Some("some desc".to_string()),
+            description: Some("desc".to_string()),
             value_type: ParameterValueType::Boolean,
         };
         let condition = Condition {
             name: "Platform".to_string(),
-            expression: "device.os == 'ios'".to_string(),
+            expression: "device.os=='ios'".to_string(),
             tag_color: TagColor::Brown,
         };
         let mut parameters = HashMap::new();
@@ -183,10 +183,23 @@ mod tests {
             parameter_groups: HashMap::new(),
         };
         let result = serde_json::to_string(&remote_config).unwrap();
-        assert_eq!(result, "{\
-            \"conditions\":[{\"name\":\"Platform\",\"expression\":\"device.os == 'ios'\",\"tagColor\":\"BROWN\"}],\
-            \"parameters\":{\"uploadLogs\":{\"defaultValue\":{\"value\":\"false\"},\"description\":\"some desc\",\"valueType\":\"BOOL\"}}\
-        }")
+        let expected_json = r#"{
+            "conditions": [{
+              "name": "Platform",
+              "expression": "device.os == 'ios'",
+              "tagColor": "BROWN"
+            }],
+            "parameters": {
+                "uploadLogs": {
+                    "defaultValue": {
+                        "value": "false"
+                    },
+                    "description": "desc",
+                    "valueType": "BOOLEAN"
+                }
+            }
+        }"#;
+        assert_eq!(result, expected_json.replace(" ", "").replace("\n", ""))
     }
 
     #[test]

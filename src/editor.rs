@@ -1,7 +1,10 @@
 use crate::error::{Error, Result};
+#[cfg(test)]
+use mockall::automock;
 use rustyline::error::ReadlineError;
 use tracing::debug;
 
+#[cfg_attr(test, automock)]
 pub trait Editor {
     fn read_line(&mut self) -> Result<String>;
 }

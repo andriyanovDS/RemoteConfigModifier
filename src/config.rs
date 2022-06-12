@@ -7,7 +7,7 @@ pub struct Config {
     pub projects: Vec<Project>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct Project {
     pub name: String,
     pub app_ids: Vec<String>,

@@ -2,6 +2,8 @@ use crate::config::Project;
 use crate::remote_config::RemoteConfig;
 use async_trait::async_trait;
 use authenticator::Authenticator;
+#[cfg(test)]
+use mockall::automock;
 use reqwest::{
     header::{ACCEPT_ENCODING, AUTHORIZATION, ETAG, IF_MATCH},
     Client, ClientBuilder,
@@ -12,7 +14,7 @@ use std::future::Future;
 use tracing::debug;
 
 mod authenticator;
-
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait NetworkService {
     async fn get_remote_config(

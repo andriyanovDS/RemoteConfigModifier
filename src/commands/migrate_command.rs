@@ -4,6 +4,8 @@ use crate::error::{Error, Result};
 use crate::io::InputReader;
 use crate::network::NetworkService;
 use crate::remote_config::{Parameter, ParameterGroup, RemoteConfig};
+#[cfg(test)]
+use crate::remote_config::{ParameterValue, ParameterValueType};
 use colored::Colorize;
 use std::collections::{HashMap, HashSet};
 use term_table::row::Row;
@@ -223,8 +225,7 @@ impl RemoteConfig {
         let mut table = self.build_table(project_name);
         let rows = &mut table.rows;
         rows.reserve(new_parameters.len());
-        let mut condition_rows = rows
-            .split_off(rows.len() - self.conditions.len());
+        let mut condition_rows = rows.split_off(rows.len() - self.conditions.len());
         rows.extend(new_parameter_rows);
         rows.append(&mut condition_rows);
 
@@ -248,5 +249,99 @@ impl<'a> NewParameter<'a> {
     fn make_rows(&self) -> Vec<Row> {
         let group_name = self.group.as_ref().map(|v| v.name);
         self.parameter.make_row(self.name.green(), group_name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::network::ResponseWithEtag;
+    use crate::{editor::MockEditor, network::MockNetworkService};
+
+    #[tokio::test]
+    async fn new_parameter_added_to_root() {
+        let expected_etag = "e_tag";
+        let parameter_name = "upload_logs";
+        let source_project = Project::new("Source".to_string(), "123".to_string(), vec![]);
+        let expected_config = RemoteConfig::new_with_root_stub_parameter(parameter_name);
+        let destination_project =
+            Project::new("Destination".to_string(), "345".to_string(), vec![]);
+        let src_proj_name = source_project.name.clone();
+        let dest_ptoj_name = destination_project.name.clone();
+
+        let mut network_mock = MockNetworkService::new();
+        network_mock.expect_get_remote_config().times(2).returning(
+            move |Project {
+                      name, app_ids: _, ..
+                  }| {
+                std::result::Result::Ok(ResponseWithEtag {
+                    etag: expected_etag.to_string(),
+                    data: if name == &src_proj_name {
+                        RemoteConfig::new_with_root_stub_parameter(parameter_name)
+                    } else {
+                        RemoteConfig::default()
+                    },
+                })
+            },
+        );
+        network_mock
+            .expect_update_remote_config()
+            .times(1)
+            .withf(move |project: &Project, config, etag| {
+                project.name == dest_ptoj_name
+                    && *config == expected_config
+                    && etag == expected_etag
+            })
+            .returning(|_, _, _| std::result::Result::Ok(()));
+
+        let mut editor_mock = MockEditor::new();
+        editor_mock
+            .expect_read_line()
+            .times(1)
+            .returning(|| Result::Ok("y".to_string()));
+
+        let command = MigrateCommand::new(
+            &source_project,
+            vec![&destination_project],
+            network_mock,
+            InputReader::new(editor_mock),
+        );
+
+        let result = command.run().await;
+        assert_eq!(result.is_ok(), true);
+    }
+}
+
+#[cfg(test)]
+impl Default for RemoteConfig {
+    fn default() -> Self {
+        RemoteConfig {
+            conditions: Vec::new(),
+            parameters: HashMap::new(),
+            parameter_groups: HashMap::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl RemoteConfig {
+    fn new_with_root_stub_parameter(name: &'static str) -> Self {
+        let mut config = Self::default();
+        config
+            .parameters
+            .insert(name.to_string(), Parameter::stub());
+        config
+    }
+}
+
+#[cfg(test)]
+impl Parameter {
+    fn stub() -> Self {
+        Parameter {
+            default_value: Some(ParameterValue::Value("false".to_string())),
+            conditional_values: HashMap::new(),
+            description: Some("desc".to_string()),
+            value_type: ParameterValueType::Boolean,
+        }
     }
 }

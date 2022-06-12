@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteConfig {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -39,7 +39,7 @@ pub enum TagColor {
     Teal,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ParameterGroup {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,

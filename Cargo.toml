@@ -33,3 +33,6 @@ tracing = "0.1.34"
 tracing-subscriber = { version ="0.3.11", features = ["env-filter"] }
 webbrowser = "0.7.1"
 yup-oauth2 = "6.6.0"
+
+[dev-dependencies]
+mockall = "0.11.1"

@@ -191,27 +191,27 @@ mod tests {
 
     #[test]
     fn deserialization() {
-        let json = "{\
-          \"conditions\": [{\
-            \"name\": \"Platform\",\
-            \"expression\": \"device.os == 'ios'\",\
-            \"tagColor\": \"BLUE\"\
-          }],\
-          \"parameters\": {\
-            \"maxCameraResolutions\": {\
-              \"defaultValue\": {\
-                \"value\": \"{\"iPhone13,2\":\"720x480\"}\"\
-              },\
-              \"conditionalValues\": {\
-                \"Platform\": {\
-                  \"value\": \"{\"iPhone13,2\":\"1280x720\"}\"\
-                }\
-              },\
-              \"description\": \"Maximum camera resolutions map for iOS devices\",\
-              \"valueType\": \"JSON\"\
-            }\
-          }\
-        }";
+        let json = r#"{
+          "conditions": [{
+            "name": "Platform",
+            "expression": "device.os == 'ios'",
+            "tagColor": "BLUE"
+          }],
+          "parameters": {
+            "maxCameraResolutions": {
+              "defaultValue": {
+                "value": "{'iPhone13,2':'720x480'}"
+              },
+              "conditionalValues": {
+                "Platform": {
+                  "value": "{'iPhone13,2':'1280x720'}"
+                }
+              },
+              "description": "Maximum camera resolutions map for iOS devices",
+              "valueType": "JSON"
+            }
+          }
+        }"#;
         println!("{:?}", &json);
         let bytes = json.as_bytes();
 
@@ -228,13 +228,13 @@ mod tests {
                 let mut map = HashMap::new();
                 map.insert(
                     "Platform".to_string(),
-                    ParameterValue::Value("{\"iPhone13,2\":\"1280x720\"}".to_string()),
+                    ParameterValue::Value("{'iPhone13,2':'1280x720'}".to_string()),
                 );
                 map
             };
             let parameter = Parameter {
                 default_value: Some(ParameterValue::Value(
-                    "{\"iPhone13,2\":\"720x480\"}".to_string(),
+                    "{'iPhone13,2':'720x480'}".to_string(),
                 )),
                 conditional_values,
                 description: Some("Maximum camera resolutions map for iOS devices".to_string()),
@@ -243,9 +243,18 @@ mod tests {
             map.insert("maxCameraResolutions".to_string(), parameter);
             map
         };
-
+        let conditions = {
+            let mut conditions = Vec::new();
+            let condition = Condition {
+                name: "Platform".to_string(),
+                expression: "device.os == 'ios'".to_string(),
+                tag_color: TagColor::Blue,
+            };
+            conditions.push(condition);
+            conditions
+        };
         let expected_config = RemoteConfig {
-            conditions: vec![],
+            conditions,
             parameters,
             parameter_groups: HashMap::new(),
         };

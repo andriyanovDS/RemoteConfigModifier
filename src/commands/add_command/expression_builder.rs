@@ -188,7 +188,7 @@ pub fn replace_app_id(expression: &mut String, app_ids: &[String]) -> Result<()>
         .find(|app_id| app_id.split(':').nth(2).unwrap() == platform);
     if replacement.is_none() {
         let message =
-            format!("App ID for compatible platform {platform} was not found for this project");
+            format!("App ID for compatible {platform} platform was not found for this project");
         return Err(Error { message });
     }
     expression.replace_range(app_id_start_index..=app_id_end_index, replacement.unwrap());

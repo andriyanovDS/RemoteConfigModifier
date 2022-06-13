@@ -2,7 +2,7 @@ use crate::commands::command::Command;
 use crate::config::Project;
 use crate::editor::Editor;
 use crate::error::{Error, Result};
-use crate::io::InputReader;
+use crate::io::{self, InputReader};
 use crate::network::{NetworkService, ResponseWithEtag};
 use crate::remote_config::{Condition, Parameter, RemoteConfig};
 use async_trait::async_trait;
@@ -20,6 +20,12 @@ pub struct AddCommand<NS: NetworkService, E: Editor> {
     description: Option<String>,
     network_service: NS,
     input_reader: InputReader<E>,
+}
+
+#[derive(Copy, PartialEq, Clone)]
+pub enum Action {
+    Add,
+    Update,
 }
 
 impl<NS: NetworkService, E: Editor> AddCommand<NS, E> {
@@ -43,114 +49,178 @@ impl<NS: NetworkService, E: Editor> AddCommand<NS, E> {
         parameter: Parameter,
         projects: &[Project],
         response: ResponseWithEtag<RemoteConfig>,
-        is_update: bool,
+        action: Action,
     ) -> Result<()> {
         let mut projects_iter = projects.iter().enumerate();
         let main_project = projects_iter.next().as_ref().unwrap().1;
 
         let mut selected_conditions = response.data.selected_conditions_map(&parameter);
-        self.add_parameter(
-            name.clone(),
-            parameter.clone(),
-            response,
-            main_project,
-            is_update,
-        )
-        .await?;
+        let new_parameter = NewParameter {
+            name: name.clone(),
+            parameter: parameter.clone(),
+        };
+        self.add_parameter(new_parameter.clone(), response, main_project, action)
+            .await?;
         if projects.len() == 1 {
             return Ok(());
         }
-        let message = "Do you want to add same values to all projects? [Y,n]";
-        if self.input_reader.ask_confirmation(message) {
-            for (index, project) in projects_iter {
-                info!("Running for {} project", &project.name);
-                let mut response = self.network_service.get_remote_config(project).await?;
-                response.data.extend_conditions(
-                    &mut selected_conditions,
-                    index + 1,
-                    &project.app_ids,
-                )?;
-                self.add_parameter(
-                    name.clone(),
-                    parameter.clone(),
-                    response,
-                    project,
-                    is_update,
+        let options = [
+            "Add only default value",
+            "Add default and conditional values",
+            "Add custom values",
+        ];
+        let selected_option = io::request_select_item_in_list(
+            "Select how to apply new parameter to other projects:",
+            options.iter().copied(),
+            None,
+        );
+        match selected_option {
+            None => {}
+            Some(0) => {
+                self.add_parameter_with_default_value_to_projects(
+                    new_parameter,
+                    projects_iter,
+                    action,
                 )
                 .await?;
             }
-        } else {
-            for (index, project) in projects_iter {
-                info!("Running for {} project", &project.name);
-                let mut conditions = Vec::new();
-                let builder = ParameterBuilder::new_from_parameter(
-                    name.clone(),
-                    &parameter,
-                    &mut self.input_reader,
-                    &[],
-                    &mut conditions,
-                );
-                let selected_condition_names = parameter
-                    .conditional_values
-                    .iter()
-                    .map(|(name, _)| name.as_str());
-                let (name, parameter) = builder.add_values(selected_condition_names)?;
-                let mut response = self.network_service.get_remote_config(project).await?;
-                response.data.extend_conditions(
+            Some(1) => {
+                self.add_parameter_with_conditions_to_projects(
+                    new_parameter,
                     &mut selected_conditions,
-                    index + 1,
-                    &project.app_ids,
-                )?;
-                self.add_parameter(name, parameter, response, project, is_update)
-                    .await?;
+                    projects_iter,
+                    action,
+                )
+                .await?;
             }
+            Some(2) => {
+                self.add_parameter_with_custom_values(
+                    new_parameter,
+                    &mut selected_conditions,
+                    projects_iter,
+                    action,
+                )
+                .await?;
+            }
+            Some(_) => panic!("Unexpected option was selected!"),
+        }
+        Ok(())
+    }
+
+    async fn add_parameter_with_conditions_to_projects(
+        &mut self,
+        new_parameter: NewParameter,
+        selected_conditions: &mut HashMap<String, GenerationalCondition>,
+        projects: impl Iterator<Item = (usize, &Project)>,
+        action: Action,
+    ) -> Result<()> {
+        for (index, project) in projects {
+            info!("Running for {} project", &project.name);
+            let mut response = self.network_service.get_remote_config(project).await?;
+            response
+                .data
+                .extend_conditions(selected_conditions, index + 1, &project.app_ids)?;
+            self.add_parameter(new_parameter.clone(), response, project, action)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn add_parameter_with_default_value_to_projects(
+        &mut self,
+        mut new_parameter: NewParameter,
+        projects: impl Iterator<Item = (usize, &Project)>,
+        action: Action,
+    ) -> Result<()> {
+        new_parameter.parameter.conditional_values = HashMap::new();
+        for (_, project) in projects {
+            info!("Running for {} project", &project.name);
+            let response = self.network_service.get_remote_config(project).await?;
+            self.add_parameter(new_parameter.clone(), response, project, action)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn add_parameter_with_custom_values(
+        &mut self,
+        new_parameter: NewParameter,
+        selected_conditions: &mut HashMap<String, GenerationalCondition>,
+        projects: impl Iterator<Item = (usize, &Project)>,
+        action: Action,
+    ) -> Result<()> {
+        for (index, project) in projects {
+            info!("Running for {} project", &project.name);
+            let mut conditions = Vec::new();
+            let builder = ParameterBuilder::new_from_parameter(
+                new_parameter.name.clone(),
+                &new_parameter.parameter,
+                &mut self.input_reader,
+                &[],
+                &mut conditions,
+            );
+            let selected_condition_names = new_parameter
+                .parameter
+                .conditional_values
+                .iter()
+                .map(|(name, _)| name.as_str());
+            let (name, parameter) = builder.add_values(selected_condition_names)?;
+            let mut response = self.network_service.get_remote_config(project).await?;
+            response
+                .data
+                .extend_conditions(selected_conditions, index + 1, &project.app_ids)?;
+            let new_parameter = NewParameter { name, parameter };
+            self.add_parameter(new_parameter, response, project, action)
+                .await?;
         }
         Ok(())
     }
 
     async fn add_parameter(
         &mut self,
-        name: String,
-        parameter: Parameter,
+        new_parameter: NewParameter,
         mut response: ResponseWithEtag<RemoteConfig>,
         project: &Project,
-        is_update: bool,
+        action: Action,
     ) -> Result<()> {
         let remote_config = &mut response.data;
-        let map_with_parameter = remote_config.get_map_for_existing_parameter(&name);
-        match (map_with_parameter.as_ref(), is_update) {
-            (Some(_), false) => {
+        let parameter_name = &new_parameter.name;
+        let parameter = new_parameter.parameter;
+        let map_with_parameter = remote_config.get_map_for_existing_parameter(parameter_name);
+        match (map_with_parameter.as_ref(), action) {
+            (Some(_), Action::Add) => {
                 let message = format!(
                     "Parameter with name {} already exists! Do you want te replace it? [Y,n]",
-                    name
+                    parameter_name
                 );
                 let message = message.yellow().to_string();
                 if !self.input_reader.ask_confirmation(&message) {
                     return Err(Error::new("Operation was canceled."));
                 }
             }
-            (Some(map), true) => {
-                let parameter = map.get(&name).unwrap();
-                parameter.preview(&name, "Previous parameter values", None);
+            (Some(map), Action::Update) => {
+                let parameter = map.get(parameter_name).unwrap();
+                parameter.preview(parameter_name, "Previous parameter values", None);
             }
             _ => {}
         }
 
-        let title = if is_update {
-            "Updated parameter values"
-        } else {
-            "Parameter will be added"
+        let title = match action {
+            Action::Add => "Parameter will be added",
+            Action::Update => "Updated parameter values",
         };
-        parameter.preview(&name, title, None);
+        parameter.preview(parameter_name, title, None);
         if !self.input_reader.ask_confirmation("Confirm: [Y,n]") {
             return Err(Error::new("Operation was canceled."));
         }
         match map_with_parameter {
             Some(map) => {
-                map.insert(name, parameter);
+                map.insert(new_parameter.name, parameter);
             }
             None => {
-                remote_config.parameters.insert(name, parameter);
+                remote_config
+                    .parameters
+                    .insert(new_parameter.name, parameter);
             }
         }
         self.network_service
@@ -172,7 +242,8 @@ impl<NS: NetworkService + Send, E: Editor + Send> Command for AddCommand<NS, E> 
             &project.app_ids,
             &mut response.data.conditions,
         );
-        self.add_parameter(name, parameter, response, project, false)
+        let new_parameter = NewParameter { name, parameter };
+        self.add_parameter(new_parameter, response, project, Action::Add)
             .await
     }
 
@@ -191,7 +262,7 @@ impl<NS: NetworkService + Send, E: Editor + Send> Command for AddCommand<NS, E> 
             &mut response.data.conditions,
         );
 
-        self.apply_parameter_to_projects(name, parameter, projects, response, false)
+        self.apply_parameter_to_projects(name, parameter, projects, response, Action::Add)
             .await
     }
 }
@@ -235,6 +306,12 @@ impl RemoteConfig {
         }
         Ok(())
     }
+}
+
+#[derive(Clone)]
+struct NewParameter {
+    name: String,
+    parameter: Parameter,
 }
 
 struct GenerationalCondition {

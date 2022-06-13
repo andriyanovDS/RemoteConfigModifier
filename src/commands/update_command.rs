@@ -1,6 +1,6 @@
 use super::add_command::parameter_builder::ParameterBuilder;
+use super::add_command::{Action, AddCommand};
 use crate::commands::command::Command;
-use crate::commands::AddCommand;
 use crate::config::Project;
 use crate::editor::Editor;
 use crate::error::{Error, Result};
@@ -138,7 +138,7 @@ impl<NS: NetworkService + Send, E: Editor + Send> Command for UpdateCommand<NS, 
             self.input_reader.take().unwrap(),
         );
         add_command
-            .apply_parameter_to_projects(name, parameter, projects, response, true)
+            .apply_parameter_to_projects(name, parameter, projects, response, Action::Update)
             .await
     }
 }

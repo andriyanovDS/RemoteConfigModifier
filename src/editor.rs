@@ -23,8 +23,19 @@ impl From<ReadlineError> for Error {
                 std::process::exit(0);
             }
             ReadlineError::Io(io_error) => Error::from(io_error),
+            #[cfg(unix)]
             ReadlineError::Errno(error) => Error::new(error.desc()),
+            #[cfg(unix)]
             ReadlineError::Utf8Error => Error::new("Invalid characters in user input"),
+            #[cfg(windows)]
+            ReadlineError::WindowResize => Error::new("Unexpected error"),
+            #[cfg(windows)]
+            ReadlineError::Decode(_) => Error::new("Invalid characters in user input"),
+            #[cfg(windows)]
+            ReadlineError::SystemError(error) => {
+                debug!("Process was interrupted.");
+                Error::new("System error")
+            }
             _ => Error::new("Unknown error happened while reading user input"),
         }
     }
